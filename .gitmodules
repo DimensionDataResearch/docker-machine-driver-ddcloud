@@ -1,0 +1,3 @@
+[submodule "vendor/github.com/DimensionDataResearch/go-dd-cloud-compute"]
+	path = vendor/github.com/DimensionDataResearch/go-dd-cloud-compute
+	url = https://github.com/DimensionDataResearch/go-dd-cloud-compute.git
