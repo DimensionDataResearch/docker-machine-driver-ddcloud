@@ -27,6 +27,12 @@ type Driver struct {
 	// The CloudControl region code
 	CloudControlRegion string
 
+	// The name of the target network domain.
+	NetworkDomainName string
+
+	// The Id of the data centre in which the target network domain is located.
+	DataCenterID string
+
 	// The Id of the target network domain.
 	NetworkDomainID string
 
@@ -72,12 +78,17 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 			Value:  "",
 		},
 		mcnflag.StringFlag{
-			Name:  "network-domain-id",
-			Usage: "The Id of the target CloudControl network domain",
+			Name:  "networkdomain",
+			Usage: "The name of the target CloudControl network domain",
 			Value: "",
 		},
 		mcnflag.StringFlag{
-			Name:  "vlan-id",
+			Name:  "datacenter",
+			Usage: "The Id of the data centre in which the the target CloudControl network domain is located",
+			Value: "",
+		},
+		mcnflag.StringFlag{
+			Name:  "vlan",
 			Usage: "The Id of the target CloudControl VLAN",
 			Value: "",
 		},
@@ -113,8 +124,9 @@ func (driver *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	driver.CloudControlPassword = flags.String("cloudcontrol-password")
 	driver.CloudControlRegion = flags.String("cloudcontrol-region")
 
-	driver.NetworkDomainID = flags.String("network-domain-id")
-	driver.VLANID = flags.String("vlan-id")
+	driver.NetworkDomainName = flags.String("networkdomain")
+	driver.DataCenterID = flags.String("datacenter")
+	driver.VLANID = flags.String("vlan")
 	driver.ImageName = DefaultImageName
 
 	driver.SSHUser = flags.String("ssh-user")
@@ -126,47 +138,31 @@ func (driver *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 
 // PreCreateCheck validates the configuration before making any changes.
 func (driver *Driver) PreCreateCheck() error {
-	client, err := driver.getCloudControlClient()
-	if err != nil {
-		return err
-	}
-
 	log.Info("Examining target network domain (Id = '%s', region = '%s')...", driver.NetworkDomainID, driver.CloudControlRegion)
 
-	networkDomain, err := client.GetNetworkDomain(driver.NetworkDomainID)
+	err := driver.resolveNetworkDomain()
 	if err != nil {
-		log.Errorf("Failed to retrieve network domain '%s': %s", driver.NetworkDomainID, err.Error())
-
 		return err
-	}
-	if networkDomain == nil {
-		log.Errorf("Network domain '%s' was not found in region '%s'.", driver.NetworkDomainID, driver.CloudControlRegion)
-
-		return fmt.Errorf("Network domain '%s' was not found", driver.NetworkDomainID)
 	}
 
 	log.Info("Will create machine '%s' in network domain '%s' (data centre '%s').",
 		driver.MachineName,
-		networkDomain.Name,
-		networkDomain.DatacenterID,
+		driver.NetworkDomainName,
+		driver.DataCenterID,
 	)
 
 	log.Info("Examining target VLAN (Id = '%s')...", driver.VLANID)
-	vlan, err := client.GetVLAN(driver.VLANID)
+	vlan, err := driver.getVLAN()
 	if err != nil {
-		log.Errorf("Failed to retrieve VLAN '%s': %s", driver.VLANID, err.Error())
-
 		return err
 	}
-	if networkDomain == nil {
+	if vlan == nil {
 		log.Errorf("VLAN '%s' was not found in network domain '%s'.", driver.VLANID, driver.NetworkDomainID)
 
 		return fmt.Errorf("VLAN '%s' was not found", driver.VLANID)
 	}
 
-	if vlan.NetworkDomain.ID != networkDomain.ID {
-		log.Errorf("Cannot use VLAN '%s' because it belongs to network domain '%s' (not '%s').", driver.VLANID, vlan.NetworkDomain.ID, networkDomain.ID)
-
+	if vlan.NetworkDomain.ID != driver.NetworkDomainID {
 		return fmt.Errorf("Cannot use VLAN '%s' because it belongs to a different network domain ('%s')", driver.VLANID, vlan.NetworkDomain.ID)
 	}
 
@@ -179,13 +175,15 @@ func (driver *Driver) Create() error {
 	if err != nil {
 		return err
 	}
-
 	log.Info("Local machine's public IP address is '%s'.", localPublicIP)
 
+	log.Info("Deploying server '%s'...", driver.MachineName)
 	server, err := driver.deployServer()
 	if err != nil {
 		return err
 	}
+
+	log.Info("Server '%s' has private IP '%s'.", driver.MachineName, driver.IPAddress)
 
 	// TODO: Create NAT and firewall rules, if required.
 

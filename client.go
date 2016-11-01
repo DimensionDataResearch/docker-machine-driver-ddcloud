@@ -71,6 +71,36 @@ func (driver *Driver) getNetworkDomain() (*compute.NetworkDomain, error) {
 	return client.GetNetworkDomain(driver.ServerID)
 }
 
+// Resolve (find) the target network domain by name and data centre Id.
+func (driver *Driver) resolveNetworkDomain() error {
+	driver.NetworkDomainID = ""
+
+	if driver.NetworkDomainName == "" {
+		return errors.New("Network domain name has not been configured")
+	}
+
+	if driver.DataCenterID == "" {
+		return errors.New("Data centre Id has not been configured")
+	}
+
+	client, err := driver.getCloudControlClient()
+	if err != nil {
+		return err
+	}
+
+	networkDomain, err := client.GetNetworkDomainByName(driver.NetworkDomainName, driver.DataCenterID)
+	if err != nil {
+		return err
+	}
+	if networkDomain == nil {
+		return fmt.Errorf("No network domain named '%s' was found in data centre '%s'", driver.NetworkDomainName, driver.DataCenterID)
+	}
+
+	driver.NetworkDomainID = networkDomain.ID
+
+	return nil
+}
+
 // Retrieve the target VLAN.
 func (driver *Driver) getVLAN() (*compute.VLAN, error) {
 	if driver.VLANID == "" {
@@ -87,9 +117,7 @@ func (driver *Driver) getVLAN() (*compute.VLAN, error) {
 
 // Resolve (find) the target OS image.
 func (driver *Driver) resolveOSImage() error {
-	if driver.ImageID != "" {
-		return nil
-	}
+	driver.ImageID = ""
 
 	networkDomain, err := driver.getNetworkDomain()
 	if err != nil {
@@ -155,16 +183,15 @@ func (driver *Driver) deployServer() (*compute.Server, error) {
 
 	log.Debug("Deploying server '%s' ('%s')...", driver.ServerID, driver.MachineName)
 
-	log.Info("Server '%s' is being provisioned...")
 	resource, err := client.WaitForDeploy(compute.ResourceTypeServer, driver.ServerID, 15*time.Minute)
 	if err != nil {
 		return nil, err
 	}
 	server := resource.(*compute.Server)
+
 	log.Debug("Server '%s' ('%s') has been successfully provisioned...", driver.ServerID, server.Name)
 
 	driver.IPAddress = *server.Network.PrimaryAdapter.PrivateIPv4Address
-	log.Info("Server '%s' has private IP '%s'.", server.Name, driver.IPAddress)
 
 	return server, nil
 }
