@@ -1,14 +1,24 @@
 package main
 
 import (
+	"fmt"
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/drivers/plugin"
+	"os"
+	"path"
 )
 
 func main() {
-	plugin.RegisterDriver(&Driver{
-		BaseDriver: &drivers.BaseDriver{
+	if len(os.Args) == 2 && os.Args[1] == "--version" {
+		fmt.Printf("%s %s\n\n", path.Base(os.Args[0]), ProviderVersion)
+
+		return
+	}
+
+	plugin.RegisterDriver(
+		&Driver{BaseDriver: &drivers.BaseDriver{
 			SSHUser: "root",
 			SSHPort: 22,
-		}})
+		}},
+	)
 }
