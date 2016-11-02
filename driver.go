@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/DimensionDataResearch/go-dd-cloud-compute/compute"
 	"github.com/docker/machine/libmachine/drivers"
@@ -36,6 +37,9 @@ type Driver struct {
 	// The Id of the target network domain.
 	NetworkDomainID string
 
+	// The name of the target virtual LAN (VLAN).
+	VLANName string
+
 	// The Id of the target virtual LAN (VLAN).
 	VLANID string
 
@@ -45,8 +49,17 @@ type Driver struct {
 	// The Id of the OS image used to create the machine.
 	ImageID string
 
-	// The Id of the target (new) server.
+	// The Id of the target server.
 	ServerID string
+
+	// The private IPv4 address of the target server.
+	PrivateIPAddress string
+
+	// The Id of the NAT rule (if any) for the target server.
+	NATRuleID string
+
+	// The path to the SSH private key for the target server.
+	SSHKey string
 
 	// The initial password used to authenticate to target machines when installing the SSH key.
 	SSHBootstrapPassword string
@@ -61,53 +74,59 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 	return []mcnflag.Flag{
 		mcnflag.StringFlag{
 			EnvVar: "DD_COMPUTE_USER",
-			Name:   "cloudcontrol-user",
+			Name:   "ddcloud-user",
 			Usage:  "The CloudControl user name",
 			Value:  "",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "DD_COMPUTE_PASSWORD",
-			Name:   "cloudcontrol-password",
+			Name:   "ddcloud-password",
 			Usage:  "The CloudControl password",
 			Value:  "",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "DD_COMPUTE_REGION",
-			Name:   "cloudcontrol-region",
-			Usage:  "The CloudControl region code",
+			Name:   "ddcloud-region",
+			Usage:  "The CloudControl region name",
 			Value:  "",
 		},
 		mcnflag.StringFlag{
-			Name:  "networkdomain",
+			Name:  "ddcloud-networkdomain",
 			Usage: "The name of the target CloudControl network domain",
 			Value: "",
 		},
 		mcnflag.StringFlag{
-			Name:  "datacenter",
-			Usage: "The Id of the data centre in which the the target CloudControl network domain is located",
+			Name:  "ddcloud-datacenter",
+			Usage: "The name of the data centre in which the the target CloudControl network domain is located",
 			Value: "",
 		},
 		mcnflag.StringFlag{
-			Name:  "vlan",
-			Usage: "The Id of the target CloudControl VLAN",
+			Name:  "ddcloud-vlan",
+			Usage: "The name of the target CloudControl VLAN",
 			Value: "",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "DD_COMPUTE_SSH_USER",
-			Name:   "ssh-user",
+			Name:   "ddcloud-ssh-user",
 			Usage:  "The SSH username to use. Default: root",
 			Value:  "root",
 		},
 		mcnflag.StringFlag{
-			EnvVar: "DD_COMPUTE_SSH_KEY_FILE",
-			Name:   "ssh-key-file",
-			Usage:  "The SSH username to use. Default: root",
-			Value:  "root",
+			EnvVar: "DD_COMPUTE_SSH_KEY",
+			Name:   "ddcloud-ssh-key",
+			Usage:  "The SSH key file to use",
+			Value:  "",
+		},
+		mcnflag.IntFlag{
+			EnvVar: "DD_COMPUTE_SSH_PORT",
+			Name:   "ddcloud-ssh-port",
+			Usage:  "The SSH port. Default: 22",
+			Value:  22,
 		},
 		mcnflag.StringFlag{
 			EnvVar: "DD_COMPUTE_SSH_BOOTSTRAP_PASSWORD",
-			Name:   "ssh-bootstrap-password",
-			Usage:  "The initial SSH password used to bootstrap SSH key authentication.",
+			Name:   "ddcloud-ssh-bootstrap-password",
+			Usage:  "The initial SSH password used to bootstrap SSH key authentication",
 			Value:  "",
 		},
 	}
@@ -120,53 +139,63 @@ func (driver *Driver) DriverName() string {
 
 // SetConfigFromFlags assigns and verifies the command-line arguments presented to the driver.
 func (driver *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
-	driver.CloudControlUser = flags.String("cloudcontrol-user")
-	driver.CloudControlPassword = flags.String("cloudcontrol-password")
-	driver.CloudControlRegion = flags.String("cloudcontrol-region")
+	driver.CloudControlUser = flags.String("ddcloud-user")
+	driver.CloudControlPassword = flags.String("ddcloud-password")
+	driver.CloudControlRegion = flags.String("ddcloud-region")
 
-	driver.NetworkDomainName = flags.String("networkdomain")
-	driver.DataCenterID = flags.String("datacenter")
-	driver.VLANID = flags.String("vlan")
+	driver.NetworkDomainName = flags.String("ddcloud-networkdomain")
+	driver.DataCenterID = flags.String("ddcloud-datacenter")
+	driver.VLANName = flags.String("ddcloud-vlan")
 	driver.ImageName = DefaultImageName
 
-	driver.SSHUser = flags.String("ssh-user")
-	driver.SSHKeyPath = flags.String("ssh-key-file")
-	driver.SSHBootstrapPassword = flags.String("ssh-bootstrap-password")
+	driver.SSHPort = flags.Int("ddcloud-ssh-port")
+	driver.SSHUser = flags.String("ddcloud-ssh-user")
+	driver.SSHKey = flags.String("ddcloud-ssh-key")
+
+	driver.SSHBootstrapPassword = flags.String("ddcloud-ssh-bootstrap-password")
+
+	log.Debugf("docker-machine-driver-ddcloud %s", DriverVersion)
 
 	return nil
 }
 
 // PreCreateCheck validates the configuration before making any changes.
 func (driver *Driver) PreCreateCheck() error {
-	log.Info("Examining target network domain (Id = '%s', region = '%s')...", driver.NetworkDomainID, driver.CloudControlRegion)
+	log.Infof("Will create machine '%s' on VLAN '%s' in network domain '%s' (data centre '%s').",
+		driver.MachineName,
+		driver.VLANName,
+		driver.NetworkDomainName,
+		driver.DataCenterID,
+	)
 
+	log.Infof("Resolving target network domain '%s' in region '%s'...",
+		driver.NetworkDomainName,
+		driver.CloudControlRegion,
+	)
 	err := driver.resolveNetworkDomain()
 	if err != nil {
 		return err
 	}
 
-	log.Info("Will create machine '%s' in network domain '%s' (data centre '%s').",
-		driver.MachineName,
+	log.Infof("Resolving target VLAN '%s' in network domain '%s'...",
+		driver.VLANName,
 		driver.NetworkDomainName,
-		driver.DataCenterID,
 	)
-
-	log.Info("Examining target VLAN (Id = '%s')...", driver.VLANID)
-	vlan, err := driver.getVLAN()
+	err = driver.resolveVLAN()
 	if err != nil {
 		return err
 	}
-	if vlan == nil {
-		log.Errorf("VLAN '%s' was not found in network domain '%s'.", driver.VLANID, driver.NetworkDomainID)
 
-		return fmt.Errorf("VLAN '%s' was not found", driver.VLANID)
+	log.Infof("Resolving OS image '%s' in data centre '%s'...",
+		driver.ImageName,
+		driver.DataCenterID,
+	)
+	err = driver.resolveOSImage()
+	if err != nil {
+		return err
 	}
 
-	if vlan.NetworkDomain.ID != driver.NetworkDomainID {
-		return fmt.Errorf("Cannot use VLAN '%s' because it belongs to a different network domain ('%s')", driver.VLANID, vlan.NetworkDomain.ID)
-	}
-
-	return driver.resolveOSImage()
+	return nil
 }
 
 // Create a new Docker Machine instance on CloudControl.
@@ -175,25 +204,32 @@ func (driver *Driver) Create() error {
 	if err != nil {
 		return err
 	}
-	log.Info("Local machine's public IP address is '%s'.", localPublicIP)
+	log.Infof("Local machine's public IP address is '%s'.", localPublicIP)
 
-	log.Info("Deploying server '%s'...", driver.MachineName)
+	log.Infof("Importing SSH key...")
+
+	err = driver.importSSHKey()
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Creating server '%s'...", driver.MachineName)
 	server, err := driver.deployServer()
 	if err != nil {
 		return err
 	}
 
-	log.Info("Server '%s' has private IP '%s'.", driver.MachineName, driver.IPAddress)
+	log.Infof("Server '%s' has private IP '%s'.", driver.MachineName, driver.IPAddress)
 
 	// TODO: Create NAT and firewall rules, if required.
 
-	log.Info("Configuring SSH key for server '%s'...")
+	log.Infof("Configuring SSH key for server '%s' ('%s')...", driver.MachineName, driver.IPAddress)
 	err = driver.installSSHKey()
 	if err != nil {
 		return err
 	}
 
-	log.Info("Server '%s' has been successfully deployed.", server.Name)
+	log.Infof("Server '%s' has been successfully created.", server.Name)
 
 	return nil
 }
@@ -237,7 +273,7 @@ func (driver *Driver) Remove() error {
 		return err
 	}
 	if server == nil {
-		log.Warn("Server '%s' not found; treating as already removed.", driver.ServerID)
+		log.Warnf("Server '%s' not found; treating as already removed.", driver.ServerID)
 
 		driver.ServerID = "" // Mark as deleted.
 
@@ -248,6 +284,8 @@ func (driver *Driver) Remove() error {
 	if err != nil {
 		return err
 	}
+
+	// TODO: Delete server's associated NAT rule, if required.
 
 	err = client.DeleteServer(driver.ServerID)
 	if err != nil {
@@ -363,6 +401,10 @@ func (driver *Driver) Kill() error {
 
 // GetSSHHostname returns the hostname for SSH
 func (driver *Driver) GetSSHHostname() (string, error) {
+	if !driver.isServerCreated() {
+		return "", errors.New("Server has not been created")
+	}
+
 	return driver.IPAddress, nil
 }
 

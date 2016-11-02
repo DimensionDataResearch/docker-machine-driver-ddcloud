@@ -4,83 +4,76 @@ import (
 	"errors"
 	"fmt"
 	"github.com/docker/machine/libmachine/log"
+	"github.com/docker/machine/libmachine/mcnutils"
 	"github.com/docker/machine/libmachine/ssh"
 	"io/ioutil"
 	"os"
+	"path"
 )
 
-// Bootstrap SSH by installing an SSH public key on the target machine.
+// Bootstrap key-based SSH authentication by installing an SSH public key on the target machine.
 func (driver *Driver) installSSHKey() error {
 	if driver.ServerID == "" {
 		return errors.New("Server has not been deployed")
 	}
 
-	log.Debug("Starting SSH bootstrap process (as user '%s') for target host '%s:%d'...",
+	log.Debugf("Starting SSH bootstrap process (as user '%s') for target host '%s:%d'...",
 		driver.SSHUser,
 		driver.IPAddress,
 		driver.SSHPort,
 	)
 
-	client, err := ssh.NewClient(driver.SSHUser, driver.IPAddress, driver.SSHPort, &ssh.Auth{
+	// We explicitly need the native client because we're using password authentication.
+	client, err := ssh.NewNativeClient(driver.SSHUser, driver.IPAddress, driver.SSHPort, &ssh.Auth{
 		Passwords: []string{driver.SSHBootstrapPassword},
 	})
 	if err != nil {
 		return err
 	}
 
-	log.Debug("Create '~/.ssh'...")
-	output, err := client.Output(`mkdir -p "~/.ssh"`)
+	log.Debugf("Create '$HOME/.ssh'...")
+	output, err := client.Output(`mkdir -p "$HOME/.ssh"`)
 	if err != nil {
-		return fmt.Errorf("Failed to create '~/.ssh'\n%s\nOutput:\n%s",
+		return fmt.Errorf("Failed to create '$HOME/.ssh'\n%s\nOutput:\n%s",
 			err.Error(),
 			output,
 		)
 	}
 
-	log.Debug("Ensure '~/.ssh/authorized_keys' exists...")
-	output, err = client.Output(`touch "~/.ssh/authorized_keys"`)
+	log.Debugf("Secure '$HOME/.ssh'...")
+	output, err = client.Output(`chmod 700 "$HOME/.ssh"`)
 	if err != nil {
-		return fmt.Errorf("Failed to create '~/.ssh/authorized_keys'\n%s\nOutput:\n%s",
+		return fmt.Errorf("Failed to secure '$HOME/.ssh'\n%s\nOutput:\n%s",
 			err.Error(),
 			output,
 		)
 	}
 
-	log.Debug("Ensure '~/.ssh/authorized_keys' exists...")
-	output, err = client.Output(`touch "~/.ssh/authorized_keys"`)
-	if err != nil {
-		return fmt.Errorf("Failed to create '~/.ssh/authorized_keys'\n%s\nOutput:\n%s",
-			err.Error(),
-			output,
-		)
-	}
-
+	log.Debugf("Add SSH key to '$HOME/.ssh/authorized_keys'...")
 	publicKey, err := driver.getSSHPublicKey()
 	if err != nil {
 		return err
 	}
-
-	log.Debug("Add SSH key to '~/.ssh/authorized_keys'...")
 	output, err = client.Output(fmt.Sprintf(
-		`echo "%s" >> "~/.ssh/authorized_keys"`, publicKey,
+		`echo '%s' >> "$HOME/.ssh/authorized_keys"`, publicKey,
 	))
 	if err != nil {
-		return fmt.Errorf("Failed to create '~/.ssh/authorized_keys'\n%s\nOutput:\n%s",
+		return fmt.Errorf("Failed to add SSH key to '$HOME/.ssh/authorized_keys'\n%s\nOutput:\n%s",
 			err.Error(),
 			output,
 		)
 	}
 
-	log.Debug("Secure '~/.ssh'...")
-	output, err = client.Output(`chmod -R 700 "~/.ssh"`)
+	log.Debugf("Secure '$HOME/.ssh/authorized_keys'...")
+	output, err = client.Output(`chmod 600 "$HOME/.ssh/authorized_keys"`)
 	if err != nil {
-		return fmt.Errorf("Failed to secure '~/.ssh'\n%s\nOutput:\n%s",
+		return fmt.Errorf("Failed to secure '$HOME/.ssh/authorized_keys'\n%s\nOutput:\n%s",
 			err.Error(),
 			output,
 		)
 	}
 
-	log.Debug("Remove password for '%s'...", driver.SSHUser)
+	log.Debugf("Remove password for '%s'...", driver.SSHUser)
 	output, err = client.Output(fmt.Sprintf(
 		"passwd -d %s", driver.SSHUser,
 	))
@@ -92,12 +85,40 @@ func (driver *Driver) installSSHKey() error {
 		)
 	}
 
-	log.Debug("SSH bootstrap process complete; the public key from '%s' is now installed on host '%s:%d' for user '%s'.",
+	driver.SSHBootstrapPassword = ""
+
+	log.Debugf("SSH bootstrap process complete; the public key from '%s' is now installed on host '%s:%d' for user '%s'.",
 		driver.SSHKeyPath+".pub",
 		driver.IPAddress,
 		driver.SSHPort,
 		driver.SSHUser,
 	)
+
+	return nil
+}
+
+// Import the configured SSH key files into the machine store folder.
+func (driver *Driver) importSSHKey() error {
+	if driver.SSHKey == "" {
+		return errors.New("SSH key path not configured")
+	}
+
+	driver.SSHKeyPath = driver.ResolveStorePath(
+		path.Base(driver.SSHKey),
+	)
+	err := copySSHKey(driver.SSHKey, driver.SSHKeyPath)
+	if err != nil {
+		log.Infof("Couldn't copy SSH private key : %s", err.Error())
+
+		return err
+	}
+
+	err = copySSHKey(driver.SSHKey+".pub", driver.SSHKeyPath+".pub")
+	if err != nil {
+		log.Infof("Couldn't copy SSH public key : %s", err.Error())
+
+		return err
+	}
 
 	return nil
 }
@@ -116,4 +137,19 @@ func (driver *Driver) getSSHPublicKey() (string, error) {
 	}
 
 	return string(publicKeyData), nil
+}
+
+// Copy an SSH key file.
+func copySSHKey(sourceFile string, destinationFile string) error {
+	err := mcnutils.CopyFile(sourceFile, destinationFile)
+	if err != nil {
+		return fmt.Errorf("unable to copy ssh key: %s", err.Error())
+	}
+
+	err = os.Chmod(destinationFile, 0600)
+	if err != nil {
+		return fmt.Errorf("unable to set permissions on the ssh key: %s", err.Error())
+	}
+
+	return nil
 }

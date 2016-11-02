@@ -33,7 +33,10 @@ func (driver *Driver) getCloudControlClient() (client *compute.Client, err error
 		return
 	}
 
-	driver.client = compute.NewClient(driver.CloudControlRegion, driver.CloudControlUser, driver.CloudControlPassword)
+	client = compute.NewClient(driver.CloudControlRegion, driver.CloudControlUser, driver.CloudControlPassword)
+	client.ConfigureRetry(10, 5*time.Second)
+
+	driver.client = client
 
 	return
 }
@@ -115,13 +118,20 @@ func (driver *Driver) getVLAN() (*compute.VLAN, error) {
 	return client.GetVLAN(driver.VLANID)
 }
 
-// Resolve (find) the target OS image.
-func (driver *Driver) resolveOSImage() error {
-	driver.ImageID = ""
+// Resolve (find) the target network domain by name and data centre Id.
+func (driver *Driver) resolveVLAN() error {
+	driver.VLANID = ""
 
-	networkDomain, err := driver.getNetworkDomain()
-	if err != nil {
-		return err
+	if driver.VLANName == "" {
+		return errors.New("VLAN name has not been configured")
+	}
+
+	var err error
+	if driver.NetworkDomainID == "" {
+		err = driver.resolveNetworkDomain()
+		if err != nil {
+			return err
+		}
 	}
 
 	client, err := driver.getCloudControlClient()
@@ -129,20 +139,15 @@ func (driver *Driver) resolveOSImage() error {
 		return err
 	}
 
-	// Find target OS image.
-	log.Info("Searching for image '%s' in data centre '%s'...", driver.ImageName, networkDomain.DatacenterID)
-
-	image, err := client.FindOSImage(driver.ImageName, networkDomain.DatacenterID)
-	if err == nil {
+	vlan, err := client.GetVLANByName(driver.VLANName, driver.NetworkDomainID)
+	if err != nil {
 		return err
 	}
-	if image == nil {
-		log.Errorf("OS image '%s' was not found in data centre '%s'.", driver.ImageName, networkDomain.DatacenterID)
-
-		return fmt.Errorf("OS image '%s' was not found in data centre '%s'", driver.ImageName, networkDomain.DatacenterID)
+	if vlan == nil {
+		return fmt.Errorf("No VLAN named '%s' was found in network domain '%s' ('%s')", driver.VLANName, driver.NetworkDomainName, driver.NetworkDomainID)
 	}
 
-	driver.ImageID = image.ID
+	driver.VLANID = vlan.ID
 
 	return nil
 }
@@ -159,6 +164,35 @@ func (driver *Driver) getOSImage() (*compute.OSImage, error) {
 	}
 
 	return client.GetOSImage(driver.ImageID)
+}
+
+// Resolve (find) the target OS image.
+func (driver *Driver) resolveOSImage() error {
+	driver.ImageID = ""
+
+	networkDomain, err := driver.getNetworkDomain()
+	if err != nil {
+		return err
+	}
+
+	client, err := driver.getCloudControlClient()
+	if err != nil {
+		return err
+	}
+
+	image, err := client.FindOSImage(driver.ImageName, driver.DataCenterID)
+	if err != nil {
+		return err
+	}
+	if image == nil {
+		log.Errorf("OS image '%s' was not found in data centre '%s'.", driver.ImageName, networkDomain.DatacenterID)
+
+		return fmt.Errorf("OS image '%s' was not found in data centre '%s'", driver.ImageName, networkDomain.DatacenterID)
+	}
+
+	driver.ImageID = image.ID
+
+	return nil
 }
 
 func (driver *Driver) deployServer() (*compute.Server, error) {
@@ -181,7 +215,7 @@ func (driver *Driver) deployServer() (*compute.Server, error) {
 		return nil, err
 	}
 
-	log.Debug("Deploying server '%s' ('%s')...", driver.ServerID, driver.MachineName)
+	log.Debugf("Deploying server '%s' ('%s')...", driver.ServerID, driver.MachineName)
 
 	resource, err := client.WaitForDeploy(compute.ResourceTypeServer, driver.ServerID, 15*time.Minute)
 	if err != nil {
@@ -189,9 +223,42 @@ func (driver *Driver) deployServer() (*compute.Server, error) {
 	}
 	server := resource.(*compute.Server)
 
-	log.Debug("Server '%s' ('%s') has been successfully provisioned...", driver.ServerID, server.Name)
+	log.Debugf("Server '%s' ('%s') has been successfully deployed...", driver.ServerID, server.Name)
 
-	driver.IPAddress = *server.Network.PrimaryAdapter.PrivateIPv4Address
+	driver.PrivateIPAddress = *server.Network.PrimaryAdapter.PrivateIPv4Address
+
+	log.Debugf("Creating NAT rule for server '%s' ('%s')...", driver.MachineName, driver.PrivateIPAddress)
+
+	natRule, err := driver.getExistingNATRuleByInternalIP(driver.PrivateIPAddress)
+	if natRule == nil {
+		err = driver.ensurePublicIPAvailable()
+		if err != nil {
+			return nil, err
+		}
+
+		natRuleID, err := client.AddNATRule(driver.NetworkDomainID, driver.PrivateIPAddress, nil)
+		if err != nil {
+			return nil, err
+		}
+		natRule, err = client.GetNATRule(natRuleID)
+		if err != nil {
+			return nil, err
+		}
+		if natRule == nil {
+			return nil, fmt.Errorf("Failed to retrieve newly-created NAT rule '%s' for server '%s'", natRuleID, driver.MachineName)
+		}
+	} else {
+		log.Debugf("NAT rule already exists (Id = '%s').", natRule.ID)
+	}
+
+	driver.IPAddress = natRule.ExternalIPAddress
+
+	log.Debugf("Created NAT rule '%s' for server '%s' (Ext:'%s' -> Int:'%s').",
+		driver.NATRuleID,
+		driver.MachineName,
+		driver.IPAddress,
+		driver.PrivateIPAddress,
+	)
 
 	return server, nil
 }
@@ -228,4 +295,70 @@ func (driver *Driver) buildDeploymentConfiguration() (deploymentConfiguration co
 	deploymentConfiguration.ApplyOSImage(image)
 
 	return
+}
+
+// Ensure that at least one public IP address is available in the target network domain.
+func (driver *Driver) ensurePublicIPAvailable() error {
+	if driver.NetworkDomainID == "" {
+		return errors.New("Network domain has not been resolved.")
+	}
+
+	log.Debugf("Verifying that network domain '%s' has a public IP available for server '%s'...", driver.NetworkDomainName, driver.MachineName)
+
+	client, err := driver.getCloudControlClient()
+	if err != nil {
+		return err
+	}
+
+	availableIPs, err := client.GetAvailablePublicIPAddresses(driver.NetworkDomainID)
+	if err != nil {
+		return err
+	}
+
+	if len(availableIPs) == 0 {
+		log.Debugf("There are no available public IPs in network domain '%s'; a new block of public IPs will be allocated.", driver.NetworkDomainID)
+
+		blockID, err := client.AddPublicIPBlock(driver.NetworkDomainID)
+		if err != nil {
+			return err
+		}
+
+		log.Debugf("Allocated new public IP block '%s'.", blockID)
+	}
+
+	return nil
+}
+
+// Find the existing NAT rule (if any) for the specified internal IPv4 address.
+func (driver *Driver) getExistingNATRuleByInternalIP(internalIPAddress string) (*compute.NATRule, error) {
+	if driver.NetworkDomainID == "" {
+		return nil, errors.New("Network domain has not been resolved.")
+	}
+
+	client, err := driver.getCloudControlClient()
+	if err != nil {
+		return nil, err
+	}
+
+	page := compute.DefaultPaging()
+	for {
+		var rules *compute.NATRules
+		rules, err = client.ListNATRules(driver.NetworkDomainID, page)
+		if err != nil {
+			return nil, err
+		}
+		if rules.IsEmpty() {
+			break // We're done
+		}
+
+		for _, rule := range rules.Rules {
+			if rule.InternalIPAddress == internalIPAddress {
+				return &rule, nil
+			}
+		}
+
+		page.Next()
+	}
+
+	return nil, nil
 }
