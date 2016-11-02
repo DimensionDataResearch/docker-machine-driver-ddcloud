@@ -280,6 +280,13 @@ func (driver *Driver) Remove() error {
 		return nil
 	}
 
+	if server.Started {
+		err = driver.Stop()
+		if err != nil {
+			return err
+		}
+	}
+
 	client, err := driver.getCloudControlClient()
 	if err != nil {
 		return err
