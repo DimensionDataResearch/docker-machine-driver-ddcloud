@@ -64,6 +64,12 @@ type Driver struct {
 	// The initial password used to authenticate to target machines when installing the SSH key.
 	SSHBootstrapPassword string
 
+	// Create a firewall rule to allow SSH access to the taret server?
+	CreateSSHFirewallRule bool
+
+	// The Id of the firewall rule (if any) created for inbound SSH access to the target server.
+	SSHFirewallRuleID string
+
 	// The CloudControl API client.
 	client *compute.Client
 }
@@ -129,6 +135,10 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "The initial SSH password used to bootstrap SSH key authentication",
 			Value:  "",
 		},
+		mcnflag.BoolFlag{
+			Name:  "ddcloud-create-ssh-firewall-rule",
+			Usage: "Create a firewall rule to allow SSH access to the taret server? Default: false",
+		},
 	}
 }
 
@@ -153,6 +163,8 @@ func (driver *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	driver.SSHKey = flags.String("ddcloud-ssh-key")
 
 	driver.SSHBootstrapPassword = flags.String("ddcloud-ssh-bootstrap-password")
+
+	driver.CreateSSHFirewallRule = flags.Bool("ddcloud-create-ssh-firewall-rule")
 
 	log.Debugf("docker-machine-driver-ddcloud %s", DriverVersion)
 
@@ -219,9 +231,13 @@ func (driver *Driver) Create() error {
 		return err
 	}
 
-	log.Infof("Server '%s' has private IP '%s'.", driver.MachineName, driver.IPAddress)
+	err = driver.createNATRuleForServer()
+	if err != nil {
+		return err
+	}
 
-	// TODO: Create NAT and firewall rules, if required.
+	log.Infof("Server '%s' has private IP '%s'.", driver.MachineName, driver.PrivateIPAddress)
+	log.Infof("Server '%s' has public IP '%s'.", driver.MachineName, driver.IPAddress)
 
 	log.Infof("Configuring SSH key for server '%s' ('%s')...", driver.MachineName, driver.IPAddress)
 	err = driver.installSSHKey()

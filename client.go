@@ -226,39 +226,7 @@ func (driver *Driver) deployServer() (*compute.Server, error) {
 	log.Debugf("Server '%s' ('%s') has been successfully deployed...", driver.ServerID, server.Name)
 
 	driver.PrivateIPAddress = *server.Network.PrimaryAdapter.PrivateIPv4Address
-
-	log.Debugf("Creating NAT rule for server '%s' ('%s')...", driver.MachineName, driver.PrivateIPAddress)
-
-	natRule, err := driver.getExistingNATRuleByInternalIP(driver.PrivateIPAddress)
-	if natRule == nil {
-		err = driver.ensurePublicIPAvailable()
-		if err != nil {
-			return nil, err
-		}
-
-		natRuleID, err := client.AddNATRule(driver.NetworkDomainID, driver.PrivateIPAddress, nil)
-		if err != nil {
-			return nil, err
-		}
-		natRule, err = client.GetNATRule(natRuleID)
-		if err != nil {
-			return nil, err
-		}
-		if natRule == nil {
-			return nil, fmt.Errorf("Failed to retrieve newly-created NAT rule '%s' for server '%s'", natRuleID, driver.MachineName)
-		}
-	} else {
-		log.Debugf("NAT rule already exists (Id = '%s').", natRule.ID)
-	}
-
-	driver.IPAddress = natRule.ExternalIPAddress
-
-	log.Debugf("Created NAT rule '%s' for server '%s' (Ext:'%s' -> Int:'%s').",
-		driver.NATRuleID,
-		driver.MachineName,
-		driver.IPAddress,
-		driver.PrivateIPAddress,
-	)
+	driver.IPAddress = driver.PrivateIPAddress // NAT rule not created yet.
 
 	return server, nil
 }
@@ -297,6 +265,144 @@ func (driver *Driver) buildDeploymentConfiguration() (deploymentConfiguration co
 	return
 }
 
+// Has a NAT rule been created for the server?
+func (driver *Driver) isNATRuleCreated() bool {
+	return driver.NATRuleID != ""
+}
+
+// Create a NAT rule to expose the server.
+func (driver *Driver) createNATRuleForServer() error {
+	if !driver.isServerCreated() {
+		return errors.New("Server has not been created")
+	}
+
+	if driver.isNATRuleCreated() {
+		return fmt.Errorf("NAT rule '%s' has already been created for server '%s'", driver.NATRuleID, driver.MachineName)
+	}
+
+	log.Debugf("Creating NAT rule for server '%s' ('%s')...", driver.MachineName, driver.PrivateIPAddress)
+
+	natRule, err := driver.getExistingNATRuleByInternalIP(driver.PrivateIPAddress)
+	if natRule == nil {
+		err = driver.ensurePublicIPAvailable()
+		if err != nil {
+			return err
+		}
+
+		client, err := driver.getCloudControlClient()
+		if err != nil {
+			return err
+		}
+
+		driver.NATRuleID, err = client.AddNATRule(driver.NetworkDomainID, driver.PrivateIPAddress, nil)
+		if err != nil {
+			return err
+		}
+		natRule, err = client.GetNATRule(driver.NATRuleID)
+		if err != nil {
+			return err
+		}
+		if natRule == nil {
+			return fmt.Errorf("Failed to retrieve newly-created NAT rule '%s' for server '%s'", driver.NATRuleID, driver.MachineName)
+		}
+
+		log.Debugf("Created NAT rule '%s' for server '%s'", driver.NATRuleID)
+	} else {
+		driver.NATRuleID = natRule.ID
+
+		log.Debugf("NAT rule already exists (Id = '%s').", driver.NATRuleID)
+	}
+
+	driver.IPAddress = natRule.ExternalIPAddress
+
+	log.Debugf("Created NAT rule '%s' for server '%s' (Ext:'%s' -> Int:'%s').",
+		driver.NATRuleID,
+		driver.MachineName,
+		driver.IPAddress,
+		driver.PrivateIPAddress,
+	)
+
+	return nil
+}
+
+// Delete the the server's NAT rule (if any).
+func (driver *Driver) deleteNATRuleForServer() error {
+	if !driver.isServerCreated() {
+		return errors.New("Server has not been created")
+	}
+
+	if !driver.isNATRuleCreated() {
+		log.Debugf("Not deleting NAT rule for server '%s' (no NAT rule was created for it).")
+
+		return nil
+	}
+
+	log.Debugf("Deleting NAT rule '%s' for server '%s' (Ext:'%s' -> Int:'%s')...", driver.NATRuleID, driver.MachineName, driver.IPAddress, driver.PrivateIPAddress)
+
+	client, err := driver.getCloudControlClient()
+	if err != nil {
+		return err
+	}
+
+	natRule, err := client.GetNATRule(driver.NATRuleID)
+	if err != nil {
+		return err
+	}
+	if natRule == nil {
+		log.Debugf("NAT rule '%s' not found; will treat it as already deleted.")
+
+		driver.NATRuleID = ""
+
+		return nil
+	}
+
+	err = client.DeleteNATRule(driver.NATRuleID)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("Deleted NAT rule '%s'.", driver.NATRuleID)
+
+	driver.NATRuleID = ""
+	driver.IPAddress = driver.PrivateIPAddress
+
+	return nil
+}
+
+// Find the existing NAT rule (if any) that forwards IPv4 traffic to specified internal address.
+func (driver *Driver) getExistingNATRuleByInternalIP(internalIPAddress string) (*compute.NATRule, error) {
+	if driver.NetworkDomainID == "" {
+		return nil, errors.New("Network domain has not been resolved.")
+	}
+
+	client, err := driver.getCloudControlClient()
+	if err != nil {
+		return nil, err
+	}
+
+	page := compute.DefaultPaging()
+	for {
+		var rules *compute.NATRules
+		rules, err = client.ListNATRules(driver.NetworkDomainID, page)
+		if err != nil {
+			return nil, err
+		}
+		if rules.IsEmpty() {
+			break // We're done
+		}
+
+		for _, rule := range rules.Rules {
+			if rule.InternalIPAddress == internalIPAddress {
+				return &rule, nil
+			}
+		}
+
+		page.Next()
+	}
+
+	return nil, nil
+}
+
 // Ensure that at least one public IP address is available in the target network domain.
 func (driver *Driver) ensurePublicIPAvailable() error {
 	if driver.NetworkDomainID == "" {
@@ -329,36 +435,7 @@ func (driver *Driver) ensurePublicIPAvailable() error {
 	return nil
 }
 
-// Find the existing NAT rule (if any) for the specified internal IPv4 address.
-func (driver *Driver) getExistingNATRuleByInternalIP(internalIPAddress string) (*compute.NATRule, error) {
-	if driver.NetworkDomainID == "" {
-		return nil, errors.New("Network domain has not been resolved.")
-	}
-
-	client, err := driver.getCloudControlClient()
-	if err != nil {
-		return nil, err
-	}
-
-	page := compute.DefaultPaging()
-	for {
-		var rules *compute.NATRules
-		rules, err = client.ListNATRules(driver.NetworkDomainID, page)
-		if err != nil {
-			return nil, err
-		}
-		if rules.IsEmpty() {
-			break // We're done
-		}
-
-		for _, rule := range rules.Rules {
-			if rule.InternalIPAddress == internalIPAddress {
-				return &rule, nil
-			}
-		}
-
-		page.Next()
-	}
-
-	return nil, nil
+// Has a firewall rule been created to allow inbound SSH for the server?
+func (driver *Driver) isSSHFirewallRuleCreated() bool {
+	return driver.SSHFirewallRuleID != ""
 }
