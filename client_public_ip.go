@@ -11,8 +11,8 @@ type ipInfo struct {
 	IPAddress string `json:"ip"`
 }
 
-// Retrieve the local machine's public IPv4 address.
-func getMyPublicIPv4Address() (string, error) {
+// Retrieve the client machine's public IPv4 address.
+func getClientPublicIPv4Address() (string, error) {
 	response, err := http.Get("http://ifconfig.co/json")
 	if err != nil {
 		return "", err

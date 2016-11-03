@@ -32,4 +32,4 @@ test: fmt
 	go test -v github.com/DimensionDataResearch/docker-machine-driver-ddcloud/...
 
 version:
-	echo "package main\n\n// DriverVersion is the current version of the CloudControl driver for Docker Machine.\nconst DriverVersion = \"v0.1 (`git rev-parse HEAD`)\"" > ./version-info.go
+	echo "package main\n\n// DriverVersion is the current version of the CloudControl driver for Docker Machine.\nconst DriverVersion = \"v0.2 (`git rev-parse HEAD`)\"" > ./version-info.go

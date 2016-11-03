@@ -212,15 +212,9 @@ func (driver *Driver) PreCreateCheck() error {
 
 // Create a new Docker Machine instance on CloudControl.
 func (driver *Driver) Create() error {
-	localPublicIP, err := getMyPublicIPv4Address()
-	if err != nil {
-		return err
-	}
-	log.Infof("Local machine's public IP address is '%s'.", localPublicIP)
-
 	log.Infof("Importing SSH key...")
 
-	err = driver.importSSHKey()
+	err := driver.importSSHKey()
 	if err != nil {
 		return err
 	}
@@ -238,6 +232,20 @@ func (driver *Driver) Create() error {
 
 	log.Infof("Server '%s' has private IP '%s'.", driver.MachineName, driver.PrivateIPAddress)
 	log.Infof("Server '%s' has public IP '%s'.", driver.MachineName, driver.IPAddress)
+
+	if driver.CreateSSHFirewallRule {
+		var clientPublicIPAddress string
+		clientPublicIPAddress, err = getClientPublicIPv4Address()
+		if err != nil {
+			return err
+		}
+		log.Infof("Local machine's public IP address is '%s'.", clientPublicIPAddress)
+
+		err = driver.createSSHFirewallRule(clientPublicIPAddress)
+		if err != nil {
+			return err
+		}
+	}
 
 	log.Infof("Configuring SSH key for server '%s' ('%s')...", driver.MachineName, driver.IPAddress)
 	err = driver.installSSHKey()
@@ -308,7 +316,19 @@ func (driver *Driver) Remove() error {
 		return err
 	}
 
-	// TODO: Delete server's associated NAT rule, if required.
+	if driver.isSSHFirewallRuleCreated() {
+		err = driver.deleteSSHFirewallRule()
+		if err != nil {
+			return err
+		}
+	}
+
+	if driver.isNATRuleCreated() {
+		err = driver.deleteNATRuleForServer()
+		if err != nil {
+			return err
+		}
+	}
 
 	err = client.DeleteServer(driver.ServerID)
 	if err != nil {

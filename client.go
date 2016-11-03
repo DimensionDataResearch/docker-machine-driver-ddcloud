@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"github.com/DimensionDataResearch/go-dd-cloud-compute/compute"
 	"github.com/docker/machine/libmachine/log"
+	"strings"
 	"time"
 )
+
+var firewallRuleNameSanitizer = strings.NewReplacer("-", ".", "_", ".")
 
 // Get the CloudControl API client used by the driver.
 func (driver *Driver) getCloudControlClient() (client *compute.Client, err error) {
@@ -49,7 +52,7 @@ func (driver *Driver) isServerCreated() bool {
 // Retrieve the target server (must have been created, or an error is returned).
 func (driver *Driver) getServer() (*compute.Server, error) {
 	if !driver.isServerCreated() {
-		return nil, errors.New("Server has not been created")
+		return nil, fmt.Errorf("Server '%s' has not been created", driver.MachineName)
 	}
 
 	client, err := driver.getCloudControlClient()
@@ -273,7 +276,7 @@ func (driver *Driver) isNATRuleCreated() bool {
 // Create a NAT rule to expose the server.
 func (driver *Driver) createNATRuleForServer() error {
 	if !driver.isServerCreated() {
-		return errors.New("Server has not been created")
+		return fmt.Errorf("Server '%s' has not been created", driver.MachineName)
 	}
 
 	if driver.isNATRuleCreated() {
@@ -328,7 +331,7 @@ func (driver *Driver) createNATRuleForServer() error {
 // Delete the the server's NAT rule (if any).
 func (driver *Driver) deleteNATRuleForServer() error {
 	if !driver.isServerCreated() {
-		return errors.New("Server has not been created")
+		return fmt.Errorf("Server '%s' has not been created", driver.MachineName)
 	}
 
 	if !driver.isNATRuleCreated() {
@@ -438,4 +441,79 @@ func (driver *Driver) ensurePublicIPAvailable() error {
 // Has a firewall rule been created to allow inbound SSH for the server?
 func (driver *Driver) isSSHFirewallRuleCreated() bool {
 	return driver.SSHFirewallRuleID != ""
+}
+
+// Create a firewall rule to enable inbound SSH connections to the target server from the client machine's (external) IP address.
+func (driver *Driver) createSSHFirewallRule(clientPublicIPAddress string) error {
+	if !driver.isServerCreated() {
+		return fmt.Errorf("Server '%s' has not been created", driver.MachineName)
+	}
+
+	if driver.isSSHFirewallRuleCreated() {
+		return fmt.Errorf("Firewall rule '%s' has already been created for server '%s'", driver.SSHFirewallRuleID, driver.MachineName)
+	}
+
+	log.Debugf("Creating SSH firewall rule for server '%s' (allow inbound traffic on port %d from '%s' to '%s')...",
+		driver.MachineName,
+		driver.SSHPort,
+		clientPublicIPAddress,
+		driver.IPAddress,
+	)
+
+	ruleConfiguration := compute.FirewallRuleConfiguration{
+		Name: firewallRuleNameSanitizer.Replace(driver.MachineName),
+	}
+	ruleConfiguration.Accept()
+	ruleConfiguration.Enable()
+	ruleConfiguration.MatchSourceAddress(clientPublicIPAddress)
+	ruleConfiguration.MatchDestinationAddress(driver.IPAddress)
+	ruleConfiguration.MatchDestinationPort(driver.SSHPort)
+
+	client, err := driver.getCloudControlClient()
+	if err != nil {
+		return err
+	}
+
+	firewallRuleID, err := client.CreateFirewallRule(ruleConfiguration)
+	if err != nil {
+		return err
+	}
+
+	driver.SSHFirewallRuleID = firewallRuleID
+
+	log.Debugf("Created SSH firewall rule '%s' for server '%s'.", driver.SSHFirewallRuleID, driver.ServerID)
+
+	return nil
+}
+
+// Delete the firewall rule that enables inbound SSH connections to the target server from the client machine's (external) IP address.
+func (driver *Driver) deleteSSHFirewallRule() error {
+	if !driver.isServerCreated() {
+		return fmt.Errorf("Server '%s' has not been created", driver.MachineName)
+	}
+
+	if !driver.isSSHFirewallRuleCreated() {
+		return fmt.Errorf("Firewall rule has not been created for server '%s'", driver.MachineName)
+	}
+
+	log.Debugf("Deleting SSH firewall rule '%s' for server '%s'...",
+		driver.MachineName,
+		driver.SSHFirewallRuleID,
+	)
+
+	client, err := driver.getCloudControlClient()
+	if err != nil {
+		return err
+	}
+
+	err = client.DeleteFirewallRule(driver.SSHFirewallRuleID)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("Deleted firewall rule '%s'.", driver.SSHFirewallRuleID)
+
+	driver.SSHFirewallRuleID = ""
+
+	return nil
 }
