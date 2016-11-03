@@ -6,7 +6,8 @@ You will need:
 
 * A network domain
 * A VLAN in that network domain (servers will be attached to this VLAN)
-* A firewall rule that permits SSH traffic from your (local) public IPv4 address to the VLAN's IPv4 network
+* A firewall rule that permits SSH traffic from your (local) public IPv4 address to the VLAN's IPv4 network  
+Alternatively, you can use the `--ddcloud-create-ssh-firewall-rule` flag when creating your machine
 
 The driver will allocate a public IP address and NAT rule for each machine that it creates.
 
@@ -49,6 +50,7 @@ Environment: `DD_COMPUTE_SSH_PORT`
 * `ddcloud-ssh-bootstrap-password` - The initial SSH password used to bootstrap SSH key authentication.  
 This password is removed once the SSH key has been installed  
 Environment: `DD_COMPUTE_SSH_BOOTSTRAP_PASSWORD`
+* `ddcloud-create-ssh-firewall-rule` - Automatically create a firewall rule to enable inbound SSH to the target server?
 
 ## Installing the provider
 

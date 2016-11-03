@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-var firewallRuleNameSanitizer = strings.NewReplacer("-", ".", "_", ".")
-
 // Get the CloudControl API client used by the driver.
 func (driver *Driver) getCloudControlClient() (client *compute.Client, err error) {
 	client = driver.client
@@ -461,7 +459,7 @@ func (driver *Driver) createSSHFirewallRule(clientPublicIPAddress string) error 
 	)
 
 	ruleConfiguration := compute.FirewallRuleConfiguration{
-		Name: firewallRuleNameSanitizer.Replace(driver.MachineName),
+		Name: driver.buildFirewallRuleName("SSH"),
 	}
 	ruleConfiguration.Accept()
 	ruleConfiguration.Enable()
@@ -516,4 +514,14 @@ func (driver *Driver) deleteSSHFirewallRule() error {
 	driver.SSHFirewallRuleID = ""
 
 	return nil
+}
+
+// Name sanitiser for firewall rules.
+var firewallRuleNameSanitizer = strings.NewReplacer("-", ".", "_", ".")
+
+// Build an acceptable name for a firewall rule.
+func (driver *Driver) buildFirewallRuleName(suffix string) string {
+	return strings.ToLower(
+		firewallRuleNameSanitizer.Replace(driver.MachineName) + "." + suffix,
+	)
 }
