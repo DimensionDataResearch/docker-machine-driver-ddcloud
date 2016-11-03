@@ -1,5 +1,10 @@
 package main
 
+/*
+ * Main program entry-point
+ * ------------------------
+ */
+
 import (
 	"fmt"
 	"github.com/docker/machine/libmachine/drivers"

@@ -1,5 +1,10 @@
 package main
 
+/*
+ * Driver implementation
+ * ---------------------
+ */
+
 import (
 	"errors"
 	"fmt"
@@ -9,7 +14,7 @@ import (
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/state"
 	"net"
-	"time"
+	"os"
 )
 
 // DefaultImageName is the name of the default OS image used to create machines.
@@ -137,7 +142,7 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 		},
 		mcnflag.BoolFlag{
 			Name:  "ddcloud-create-ssh-firewall-rule",
-			Usage: "Create a firewall rule to allow SSH access to the taret server? Default: false",
+			Usage: "Create a firewall rule to allow SSH access to the target server? Default: false",
 		},
 	}
 }
@@ -225,6 +230,7 @@ func (driver *Driver) Create() error {
 		return err
 	}
 
+	log.Infof("Exposing server '%s'...", driver.MachineName)
 	err = driver.createNATRuleForServer()
 	if err != nil {
 		return err
@@ -239,7 +245,14 @@ func (driver *Driver) Create() error {
 		if err != nil {
 			return err
 		}
-		log.Infof("Local machine's public IP address is '%s'.", clientPublicIPAddress)
+
+		log.Infof("Creating firewall rule to enable inbound SSH traffic from local machine '%s' ('%s') to '%s' ('%s':%d)...",
+			os.Getenv("HOST"),
+			clientPublicIPAddress,
+			driver.MachineName,
+			driver.IPAddress,
+			driver.SSHPort,
+		)
 
 		err = driver.createSSHFirewallRule(clientPublicIPAddress)
 		if err != nil {
@@ -247,7 +260,7 @@ func (driver *Driver) Create() error {
 		}
 	}
 
-	log.Infof("Configuring SSH key for server '%s' ('%s')...", driver.MachineName, driver.IPAddress)
+	log.Infof("Installing SSH key for server '%s' ('%s')...", driver.MachineName, driver.IPAddress)
 	err = driver.installSSHKey()
 	if err != nil {
 		return err
@@ -258,7 +271,7 @@ func (driver *Driver) Create() error {
 	return nil
 }
 
-// GetState retrieves the status of a Docker Machine instance in CloudControl.
+// GetState retrieves the status of the target Docker Machine instance in CloudControl.
 func (driver *Driver) GetState() (state.State, error) {
 	server, err := driver.getServer()
 	if err != nil {
@@ -335,7 +348,7 @@ func (driver *Driver) Remove() error {
 		return err
 	}
 
-	err = client.WaitForDelete(compute.ResourceTypeServer, driver.ServerID, 10*time.Minute)
+	err = client.WaitForDelete(compute.ResourceTypeServer, driver.ServerID, serverDeleteTimeout)
 	if err != nil {
 		return err
 	}
@@ -347,60 +360,12 @@ func (driver *Driver) Remove() error {
 
 // Start the target machine.
 func (driver *Driver) Start() error {
-	server, err := driver.getServer()
-	if err != nil {
-		return err
-	}
-	if server == nil {
-		return fmt.Errorf("Server '%s' not found.", driver.ServerID)
-	}
-
-	if !server.Started {
-		return nil
-	}
-
-	client, err := driver.getCloudControlClient()
-	if err != nil {
-		return err
-	}
-
-	err = client.StartServer(driver.ServerID)
-	if err != nil {
-		return err
-	}
-
-	_, err = client.WaitForChange(compute.ResourceTypeServer, driver.ServerID, "Start server", 3*time.Minute)
-
-	return err
+	return driver.startServer()
 }
 
 // Stop the target machine (gracefully).
 func (driver *Driver) Stop() error {
-	server, err := driver.getServer()
-	if err != nil {
-		return err
-	}
-	if server == nil {
-		return fmt.Errorf("Server '%s' not found.", driver.ServerID)
-	}
-
-	if !server.Started {
-		return nil
-	}
-
-	client, err := driver.getCloudControlClient()
-	if err != nil {
-		return err
-	}
-
-	err = client.ShutdownServer(driver.ServerID)
-	if err != nil {
-		return err
-	}
-
-	_, err = client.WaitForChange(compute.ResourceTypeServer, driver.ServerID, "Shut down server", 3*time.Minute)
-
-	return err
+	return driver.stopServer()
 }
 
 // Restart the target machine.
@@ -415,31 +380,7 @@ func (driver *Driver) Restart() error {
 
 // Kill the target machine (hard shutdown).
 func (driver *Driver) Kill() error {
-	server, err := driver.getServer()
-	if err != nil {
-		return err
-	}
-	if server == nil {
-		return fmt.Errorf("Server '%s' not found.", driver.ServerID)
-	}
-
-	if !server.Started {
-		return nil
-	}
-
-	client, err := driver.getCloudControlClient()
-	if err != nil {
-		return err
-	}
-
-	err = client.PowerOffServer(driver.ServerID)
-	if err != nil {
-		return err
-	}
-
-	_, err = client.WaitForChange(compute.ResourceTypeServer, driver.ServerID, "Power off server", 3*time.Minute)
-
-	return err
+	return driver.powerOffServer()
 }
 
 // GetSSHHostname returns the hostname for SSH

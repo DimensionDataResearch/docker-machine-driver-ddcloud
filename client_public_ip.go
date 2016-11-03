@@ -1,5 +1,12 @@
 package main
 
+/*
+ * Detect the client machine's external IPv4 address
+ * -------------------------------------------------
+ *
+ * Uses http://ifconfig.co/json
+ */
+
 import (
 	"encoding/json"
 	"io/ioutil"

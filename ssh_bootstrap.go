@@ -1,5 +1,14 @@
 package main
 
+/*
+ * SSH key bootstrapper
+ * --------------------
+ *
+ * Installs an SSH key onto the target machine so the rest of docker-machine can do its stuff (then disables password authentication).
+ *
+ * This is required because CloudControl only supports specifying passwords during server deployment (not SSH keys).
+ */
+
 import (
 	"errors"
 	"fmt"

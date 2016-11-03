@@ -1,5 +1,10 @@
 package main
 
+/*
+ * Driver support for the CloudControl API client
+ * ----------------------------------------------
+ */
+
 import (
 	"errors"
 	"fmt"
@@ -7,6 +12,33 @@ import (
 	"github.com/docker/machine/libmachine/log"
 	"strings"
 	"time"
+)
+
+// CloudControl client retry
+const (
+	// The maximum number of times the client will retry in the case of a network error connecting to the CloudContron API.
+	clientMaxRetry = 5
+
+	// The period of time between retries against the CloudControl API.
+	clientRetryPeriod = 5 * time.Second
+)
+
+// Timeouts
+const (
+	// CloudControl server deployment timeout.
+	serverCreateTimeout = 15 * time.Minute
+
+	// CloudControl resource deletion timeout.
+	serverDeleteTimeout = 10 * time.Minute
+
+	// CloudControl server startup timeout.
+	serverStartTimeout = 3 * time.Minute
+
+	// CloudControl server shutdown timeout.
+	serverStopTimeout = 3 * time.Minute
+
+	// CloudControl server power-off timeout.
+	serverPowerOffTimeout = 2 * time.Minute
 )
 
 // Get the CloudControl API client used by the driver.
@@ -35,7 +67,7 @@ func (driver *Driver) getCloudControlClient() (client *compute.Client, err error
 	}
 
 	client = compute.NewClient(driver.CloudControlRegion, driver.CloudControlUser, driver.CloudControlPassword)
-	client.ConfigureRetry(10, 5*time.Second)
+	client.ConfigureRetry(clientMaxRetry, clientRetryPeriod)
 
 	driver.client = client
 
@@ -218,7 +250,7 @@ func (driver *Driver) deployServer() (*compute.Server, error) {
 
 	log.Debugf("Deploying server '%s' ('%s')...", driver.ServerID, driver.MachineName)
 
-	resource, err := client.WaitForDeploy(compute.ResourceTypeServer, driver.ServerID, 15*time.Minute)
+	resource, err := client.WaitForDeploy(compute.ResourceTypeServer, driver.ServerID, serverCreateTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -264,6 +296,93 @@ func (driver *Driver) buildDeploymentConfiguration() (deploymentConfiguration co
 	deploymentConfiguration.ApplyOSImage(image)
 
 	return
+}
+
+// Start the target server.
+func (driver *Driver) startServer() error {
+	server, err := driver.getServer()
+	if err != nil {
+		return err
+	}
+	if server == nil {
+		return fmt.Errorf("Server '%s' not found.", driver.ServerID)
+	}
+
+	if !server.Started {
+		return nil
+	}
+
+	client, err := driver.getCloudControlClient()
+	if err != nil {
+		return err
+	}
+
+	err = client.StartServer(driver.ServerID)
+	if err != nil {
+		return err
+	}
+
+	_, err = client.WaitForChange(compute.ResourceTypeServer, driver.ServerID, "Start server", serverStartTimeout)
+
+	return err
+}
+
+// Stop the target server.
+func (driver *Driver) stopServer() error {
+	server, err := driver.getServer()
+	if err != nil {
+		return err
+	}
+	if server == nil {
+		return fmt.Errorf("Server '%s' not found.", driver.ServerID)
+	}
+
+	if !server.Started {
+		return nil
+	}
+
+	client, err := driver.getCloudControlClient()
+	if err != nil {
+		return err
+	}
+
+	err = client.ShutdownServer(driver.ServerID)
+	if err != nil {
+		return err
+	}
+
+	_, err = client.WaitForChange(compute.ResourceTypeServer, driver.ServerID, "Shut down server", serverStopTimeout)
+
+	return err
+}
+
+// Stop the target server.
+func (driver *Driver) powerOffServer() error {
+	server, err := driver.getServer()
+	if err != nil {
+		return err
+	}
+	if server == nil {
+		return fmt.Errorf("Server '%s' not found.", driver.ServerID)
+	}
+
+	if !server.Started {
+		return nil
+	}
+
+	client, err := driver.getCloudControlClient()
+	if err != nil {
+		return err
+	}
+
+	err = client.PowerOffServer(driver.ServerID)
+	if err != nil {
+		return err
+	}
+
+	_, err = client.WaitForChange(compute.ResourceTypeServer, driver.ServerID, "Power off server", serverPowerOffTimeout)
+
+	return err
 }
 
 // Has a NAT rule been created for the server?
