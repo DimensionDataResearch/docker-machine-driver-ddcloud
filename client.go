@@ -203,11 +203,6 @@ func (driver *Driver) getOSImage() (*compute.OSImage, error) {
 func (driver *Driver) resolveOSImage() error {
 	driver.ImageID = ""
 
-	networkDomain, err := driver.getNetworkDomain()
-	if err != nil {
-		return err
-	}
-
 	client, err := driver.getCloudControlClient()
 	if err != nil {
 		return err
@@ -218,9 +213,17 @@ func (driver *Driver) resolveOSImage() error {
 		return err
 	}
 	if image == nil {
-		log.Errorf("OS image '%s' was not found in data centre '%s'.", driver.ImageName, networkDomain.DatacenterID)
+		log.Errorf("OS image '%s' was not found in data centre '%s'.", driver.ImageName, driver.DataCenterID)
 
-		return fmt.Errorf("OS image '%s' was not found in data centre '%s'", driver.ImageName, networkDomain.DatacenterID)
+		return fmt.Errorf("OS image '%s' was not found in data centre '%s'", driver.ImageName, driver.DataCenterID)
+	}
+
+	if image.OperatingSystem.Family != "UNIX" {
+		return fmt.Errorf("OS image '%s' in data centre '%s' is not from a supported OS family (expected 'UNIX', but found '%s')",
+			driver.ImageName,
+			driver.DataCenterID,
+			image.OperatingSystem.Family,
+		)
 	}
 
 	driver.ImageID = image.ID

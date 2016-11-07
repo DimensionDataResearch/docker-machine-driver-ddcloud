@@ -117,6 +117,11 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 			Value: "",
 		},
 		mcnflag.StringFlag{
+			Name:  "ddcloud-image-name",
+			Usage: fmt.Sprintf(`The name of OS image used to create the target machine. Default: "%s"`, DefaultImageName),
+			Value: DefaultImageName,
+		},
+		mcnflag.StringFlag{
 			EnvVar: "DD_COMPUTE_SSH_USER",
 			Name:   "ddcloud-ssh-user",
 			Usage:  "The SSH username to use. Default: root",
@@ -161,7 +166,7 @@ func (driver *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	driver.NetworkDomainName = flags.String("ddcloud-networkdomain")
 	driver.DataCenterID = flags.String("ddcloud-datacenter")
 	driver.VLANName = flags.String("ddcloud-vlan")
-	driver.ImageName = DefaultImageName
+	driver.ImageName = flags.String("ddcloud-image-name")
 
 	driver.SSHPort = flags.Int("ddcloud-ssh-port")
 	driver.SSHUser = flags.String("ddcloud-ssh-user")
