@@ -84,19 +84,19 @@ type Driver struct {
 func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 	return []mcnflag.Flag{
 		mcnflag.StringFlag{
-			EnvVar: "DD_COMPUTE_USER",
+			EnvVar: "MCP_USER",
 			Name:   "ddcloud-user",
 			Usage:  "The CloudControl user name",
 			Value:  "",
 		},
 		mcnflag.StringFlag{
-			EnvVar: "DD_COMPUTE_PASSWORD",
+			EnvVar: "MCP_PASSWORD",
 			Name:   "ddcloud-password",
 			Usage:  "The CloudControl password",
 			Value:  "",
 		},
 		mcnflag.StringFlag{
-			EnvVar: "DD_COMPUTE_REGION",
+			EnvVar: "MCP_REGION",
 			Name:   "ddcloud-region",
 			Usage:  "The CloudControl region name",
 			Value:  "",
@@ -122,25 +122,25 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 			Value: DefaultImageName,
 		},
 		mcnflag.StringFlag{
-			EnvVar: "DD_COMPUTE_SSH_USER",
+			EnvVar: "MCP_SSH_USER",
 			Name:   "ddcloud-ssh-user",
 			Usage:  "The SSH username to use. Default: root",
 			Value:  "root",
 		},
 		mcnflag.StringFlag{
-			EnvVar: "DD_COMPUTE_SSH_KEY",
+			EnvVar: "MCP_SSH_KEY",
 			Name:   "ddcloud-ssh-key",
 			Usage:  "The SSH key file to use",
 			Value:  "",
 		},
 		mcnflag.IntFlag{
-			EnvVar: "DD_COMPUTE_SSH_PORT",
+			EnvVar: "MCP_SSH_PORT",
 			Name:   "ddcloud-ssh-port",
 			Usage:  "The SSH port. Default: 22",
 			Value:  22,
 		},
 		mcnflag.StringFlag{
-			EnvVar: "DD_COMPUTE_SSH_BOOTSTRAP_PASSWORD",
+			EnvVar: "MCP_SSH_BOOTSTRAP_PASSWORD",
 			Name:   "ddcloud-ssh-bootstrap-password",
 			Usage:  "The initial SSH password used to bootstrap SSH key authentication",
 			Value:  "",
