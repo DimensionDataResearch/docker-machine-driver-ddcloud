@@ -6,10 +6,9 @@ You will need:
 
 * A network domain
 * A VLAN in that network domain (servers will be attached to this VLAN)
-* A firewall rule that permits SSH traffic from your (local) public IPv4 address to the VLAN's IPv4 network  
-Alternatively, you can use the `--ddcloud-create-ssh-firewall-rule` flag when creating your machine
-
-The driver will allocate a public IP address and NAT rule for each machine that it creates.
+* If using public IP addresses, a firewall rule that permits SSH traffic from your (local) public IPv4 address to the VLAN's IPv4 network  
+Alternatively, you can use the `--ddcloud-create-ssh-firewall-rule` flag when creating your machine if you have permissions in CloudControl to create firewall and NAT rules
+* If using private IP addresses, you will need to be connected to the CloudControl VPN for the target data centre
 
 ### Example
 
