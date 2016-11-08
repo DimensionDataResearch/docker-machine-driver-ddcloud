@@ -581,7 +581,8 @@ func (driver *Driver) createSSHFirewallRule(clientPublicIPAddress string) error 
 	)
 
 	ruleConfiguration := compute.FirewallRuleConfiguration{
-		Name: driver.buildFirewallRuleName("SSH"),
+		Name:            driver.buildFirewallRuleName("SSH"),
+		NetworkDomainID: driver.NetworkDomainID,
 	}
 	ruleConfiguration.Accept()
 	ruleConfiguration.Enable()
