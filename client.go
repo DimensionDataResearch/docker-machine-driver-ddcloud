@@ -586,6 +586,8 @@ func (driver *Driver) createSSHFirewallRule(clientPublicIPAddress string) error 
 	}
 	ruleConfiguration.Accept()
 	ruleConfiguration.Enable()
+	ruleConfiguration.IPv4()
+	ruleConfiguration.TCP()
 	ruleConfiguration.MatchSourceAddress(clientPublicIPAddress)
 	ruleConfiguration.MatchDestinationAddress(driver.IPAddress)
 	ruleConfiguration.MatchDestinationPort(driver.SSHPort)
