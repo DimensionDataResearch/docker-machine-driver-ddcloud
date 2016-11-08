@@ -60,6 +60,11 @@ type Driver struct {
 	// The private IPv4 address of the target server.
 	PrivateIPAddress string
 
+	// Only use the target server's private IP address?
+	//
+	// If true, then no NAT rule or firewall rule will be created.
+	UsePrivateIP bool
+
 	// The Id of the NAT rule (if any) for the target server.
 	NATRuleID string
 
@@ -149,6 +154,10 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:  "ddcloud-create-ssh-firewall-rule",
 			Usage: "Create a firewall rule to allow SSH access to the target server? Default: false",
 		},
+		mcnflag.BoolFlag{
+			Name:  "ddcloud-use-private-ip",
+			Usage: "Don't create NAT and firewall rules for target server (you will need to be connected to the VPN for your target data centre). Default: false",
+		},
 	}
 }
 
@@ -175,6 +184,7 @@ func (driver *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	driver.SSHBootstrapPassword = flags.String("ddcloud-ssh-bootstrap-password")
 
 	driver.CreateSSHFirewallRule = flags.Bool("ddcloud-create-ssh-firewall-rule")
+	driver.UsePrivateIP = flags.Bool("ddcloud-use-private-ip")
 
 	log.Debugf("docker-machine-driver-ddcloud %s", DriverVersion)
 
@@ -235,34 +245,37 @@ func (driver *Driver) Create() error {
 		return err
 	}
 
-	log.Infof("Exposing server '%s'...", driver.MachineName)
-	err = driver.createNATRuleForServer()
-	if err != nil {
-		return err
-	}
-
-	log.Infof("Server '%s' has private IP '%s'.", driver.MachineName, driver.PrivateIPAddress)
-	log.Infof("Server '%s' has public IP '%s'.", driver.MachineName, driver.IPAddress)
-
-	if driver.CreateSSHFirewallRule {
-		var clientPublicIPAddress string
-		clientPublicIPAddress, err = getClientPublicIPv4Address()
+	if !driver.UsePrivateIP {
+		log.Infof("Exposing server '%s'...", driver.MachineName)
+		err = driver.createNATRuleForServer()
 		if err != nil {
 			return err
 		}
 
-		log.Infof("Creating firewall rule to enable inbound SSH traffic from local machine '%s' ('%s') to '%s' ('%s':%d)...",
-			os.Getenv("HOST"),
-			clientPublicIPAddress,
-			driver.MachineName,
-			driver.IPAddress,
-			driver.SSHPort,
-		)
+		log.Infof("Server '%s' has public IP '%s'.", driver.MachineName, driver.IPAddress)
 
-		err = driver.createSSHFirewallRule(clientPublicIPAddress)
-		if err != nil {
-			return err
+		if driver.CreateSSHFirewallRule {
+			var clientPublicIPAddress string
+			clientPublicIPAddress, err = getClientPublicIPv4Address()
+			if err != nil {
+				return err
+			}
+
+			log.Infof("Creating firewall rule to enable inbound SSH traffic from local machine '%s' ('%s') to '%s' ('%s':%d)...",
+				os.Getenv("HOST"),
+				clientPublicIPAddress,
+				driver.MachineName,
+				driver.IPAddress,
+				driver.SSHPort,
+			)
+
+			err = driver.createSSHFirewallRule(clientPublicIPAddress)
+			if err != nil {
+				return err
+			}
 		}
+	} else {
+		log.Infof("Server '%s' has private IP '%s'.", driver.MachineName, driver.PrivateIPAddress)
 	}
 
 	log.Infof("Installing SSH key for server '%s' ('%s')...", driver.MachineName, driver.IPAddress)

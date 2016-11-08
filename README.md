@@ -53,6 +53,7 @@ Environment: `MCP_SSH_PORT`
 This password is removed once the SSH key has been installed  
 Environment: `MCP_SSH_BOOTSTRAP_PASSWORD`
 * `ddcloud-create-ssh-firewall-rule` - Automatically create a firewall rule to enable inbound SSH to the target server?
+* `ddcloud-use-private-ip` - Don't create NAT and firewall rules for target server (you will need to be connected to the VPN for your target data centre).
 
 ## Installing the provider
 
