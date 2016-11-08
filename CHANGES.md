@@ -1,5 +1,11 @@
 # Changes
 
+## v0.5
+
+Bug fixes:
+
+* Fixed error about missing network domain Id when creating SSH firewall rules (#7).
+
 ## v0.4
 
 New features:
