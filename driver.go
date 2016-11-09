@@ -233,12 +233,9 @@ func (driver *Driver) PreCreateCheck() error {
 	switch driver.ImageOSType {
 	case "REDHAT664":
 	case "REDHAT764":
-		log.Warnf("Image '%s' is RedHat 6 or 7 (64-bit).",
+		return fmt.Errorf("Image '%s' is not currently supported because the CloudControl images based on RedHat 6 and 7 are known to have problems with Docker Machine.",
 			driver.ImageName,
 		)
-		log.Warnf("This image is known to have problems with Docker Machine (the ddcloud driver will need to clear the server's iptables configuration when it is provisioned).")
-
-		break
 	}
 
 	return nil
@@ -296,17 +293,6 @@ func (driver *Driver) Create() error {
 	err = driver.installSSHKey()
 	if err != nil {
 		return err
-	}
-
-	switch driver.ImageOSType {
-	case "REDHAT664":
-	case "REDHAT764":
-		err = driver.clearIPTablesConfiguration()
-		if err != nil {
-			return err
-		}
-
-		break
 	}
 
 	log.Infof("Server '%s' has been successfully created.", server.Name)
