@@ -565,7 +565,7 @@ func (driver *Driver) isSSHFirewallRuleCreated() bool {
 }
 
 // Create a firewall rule to enable inbound SSH connections to the target server from the client machine's (external) IP address.
-func (driver *Driver) createSSHFirewallRule(clientPublicIPAddress string) error {
+func (driver *Driver) createSSHFirewallRule() error {
 	if !driver.isServerCreated() {
 		return fmt.Errorf("Server '%s' has not been created", driver.MachineName)
 	}
@@ -577,7 +577,7 @@ func (driver *Driver) createSSHFirewallRule(clientPublicIPAddress string) error 
 	log.Debugf("Creating SSH firewall rule for server '%s' (allow inbound traffic on port %d from '%s' to '%s')...",
 		driver.MachineName,
 		driver.SSHPort,
-		clientPublicIPAddress,
+		driver.ClientPublicIPAddress,
 		driver.IPAddress,
 	)
 
@@ -589,7 +589,7 @@ func (driver *Driver) createSSHFirewallRule(clientPublicIPAddress string) error 
 	ruleConfiguration.Enable()
 	ruleConfiguration.IPv4()
 	ruleConfiguration.TCP()
-	ruleConfiguration.MatchSourceAddress(clientPublicIPAddress)
+	ruleConfiguration.MatchSourceAddress(driver.ClientPublicIPAddress)
 	ruleConfiguration.MatchDestinationAddress(driver.IPAddress)
 	ruleConfiguration.MatchDestinationPort(driver.SSHPort)
 

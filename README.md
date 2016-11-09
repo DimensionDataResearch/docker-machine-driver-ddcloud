@@ -43,16 +43,18 @@ Note that only OS images are supported for now, not customer images.
 Additionally, the OS must be a Linux distribution supported by docker-machine (Ubuntu 12.04 and above are supported, but RedHat 6 and 7 are not supported due to iptables configuration issues).
 * `ddcloud-ssh-user` - The SSH username to use.  
 Default: "root".  
-Environment: `MCP_SSH_USER`
+Environment: `MCP_SSH_USER`.
 * `ddcloud-ssh-key` - The SSH key file to use.  
-Environment: `MCP_SSH_KEY`
+Environment: `MCP_SSH_KEY`.
 * `ddcloud-ssh-port` - The SSH port to use.  
 Default: 22.  
-Environment: `MCP_SSH_PORT`
+Environment: `MCP_SSH_PORT`.
 * `ddcloud-ssh-bootstrap-password` - The initial SSH password used to bootstrap SSH key authentication.  
 This password is removed once the SSH key has been installed  
 Environment: `MCP_SSH_BOOTSTRAP_PASSWORD`
 * `ddcloud-create-ssh-firewall-rule` - Automatically create a firewall rule to enable inbound SSH to the target server?
+* `ddcloud-client-public-ip` - Use the specified IPv4 address as the client's public IP address (don't auto-detect).  
+Environment: `MCP_CLIENT_PUBLIC_IP`.
 * `ddcloud-use-private-ip` - Don't create NAT and firewall rules for target server (you will need to be connected to the VPN for your target data centre).
 
 ## Installing the provider

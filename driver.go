@@ -83,6 +83,9 @@ type Driver struct {
 	// The Id of the firewall rule (if any) created for inbound SSH access to the target server.
 	SSHFirewallRuleID string
 
+	// The client's public (external) IP address.
+	ClientPublicIPAddress string
+
 	// The CloudControl API client.
 	client *compute.Client
 }
@@ -157,6 +160,12 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:  "ddcloud-create-ssh-firewall-rule",
 			Usage: "Create a firewall rule to allow SSH access to the target server? Default: false",
 		},
+		mcnflag.StringFlag{
+			EnvVar: "MCP_CLIENT_PUBLIC_IP",
+			Name:  "ddcloud-client-public-ip",
+			Usage: "Use the specified IPv4 address as the client's public IP address (don't auto-detect)",
+			Value: "",
+		},
 		mcnflag.BoolFlag{
 			Name:  "ddcloud-use-private-ip",
 			Usage: "Don't create NAT and firewall rules for target server (you will need to be connected to the VPN for your target data centre). Default: false",
@@ -187,6 +196,7 @@ func (driver *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	driver.SSHBootstrapPassword = flags.String("ddcloud-ssh-bootstrap-password")
 
 	driver.CreateSSHFirewallRule = flags.Bool("ddcloud-create-ssh-firewall-rule")
+	driver.ClientPublicIPAddress = flags.String("ddcloud-client-public-ip")
 	driver.UsePrivateIP = flags.Bool("ddcloud-use-private-ip")
 
 	log.Debugf("docker-machine-driver-ddcloud %s", DriverVersion)
@@ -266,21 +276,22 @@ func (driver *Driver) Create() error {
 		log.Infof("Server '%s' has public IP '%s'.", driver.MachineName, driver.IPAddress)
 
 		if driver.CreateSSHFirewallRule {
-			var clientPublicIPAddress string
-			clientPublicIPAddress, err = getClientPublicIPv4Address()
-			if err != nil {
-				return err
+			if driver.ClientPublicIPAddress == "" {
+				driver.ClientPublicIPAddress, err = getClientPublicIPv4Address()
+				if err != nil {
+					return err
+				}
 			}
 
 			log.Infof("Creating firewall rule to enable inbound SSH traffic from local machine '%s' ('%s') to '%s' ('%s':%d)...",
 				os.Getenv("HOST"),
-				clientPublicIPAddress,
+				driver.ClientPublicIPAddress,
 				driver.MachineName,
 				driver.IPAddress,
 				driver.SSHPort,
 			)
 
-			err = driver.createSSHFirewallRule(clientPublicIPAddress)
+			err = driver.createSSHFirewallRule()
 			if err != nil {
 				return err
 			}
