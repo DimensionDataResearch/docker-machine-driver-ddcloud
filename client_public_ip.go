@@ -9,6 +9,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -20,9 +21,9 @@ type ipInfo struct {
 
 // Retrieve the client machine's public IPv4 address.
 func getClientPublicIPv4Address() (string, error) {
-	response, err := http.Get("http://ifconfig.co/json")
+	response, err := http.Get("https://ifconfig.co/json")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Unable to connect to ifconfig.co to determine your IP address: %s", err.Error())
 	}
 	defer response.Body.Close()
 
