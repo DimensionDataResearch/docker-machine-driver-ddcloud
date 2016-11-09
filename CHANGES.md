@@ -1,5 +1,11 @@
 # Changes
 
+## v0.7
+
+New features:
+
+* Enable explicitly specifying the client's public IP address via `--ddcloud-client-public-ip` (#7).
+
 ## v0.6
 
 New features:

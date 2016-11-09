@@ -162,9 +162,9 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 		},
 		mcnflag.StringFlag{
 			EnvVar: "MCP_CLIENT_PUBLIC_IP",
-			Name:  "ddcloud-client-public-ip",
-			Usage: "Use the specified IPv4 address as the client's public IP address (don't auto-detect)",
-			Value: "",
+			Name:   "ddcloud-client-public-ip",
+			Usage:  "Use the specified IPv4 address as the client's public IP address (don't auto-detect)",
+			Value:  "",
 		},
 		mcnflag.BoolFlag{
 			Name:  "ddcloud-use-private-ip",
