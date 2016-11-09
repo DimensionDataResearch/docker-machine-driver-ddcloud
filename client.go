@@ -227,6 +227,7 @@ func (driver *Driver) resolveOSImage() error {
 	}
 
 	driver.ImageID = image.ID
+	driver.ImageOSType = image.OperatingSystem.ID
 
 	return nil
 }

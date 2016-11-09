@@ -54,6 +54,9 @@ type Driver struct {
 	// The Id of the OS image used to create the machine.
 	ImageID string
 
+	// The operating system type (e.g. "REDHAT764", "CENTOS764", "UBUNTU1464", etc) of the OS image used to create the machine.
+	ImageOSType string
+
 	// The Id of the target server.
 	ServerID string
 
@@ -227,6 +230,17 @@ func (driver *Driver) PreCreateCheck() error {
 		return err
 	}
 
+	switch driver.ImageOSType {
+	case "REDHAT664":
+	case "REDHAT764":
+		log.Warnf("Image '%s' is RedHat 6 or 7 (64-bit).",
+			driver.ImageName,
+		)
+		log.Warnf("This image is known to have problems with Docker Machine (the ddcloud driver will need to clear the server's iptables configuration when it is provisioned).")
+
+		break
+	}
+
 	return nil
 }
 
@@ -282,6 +296,17 @@ func (driver *Driver) Create() error {
 	err = driver.installSSHKey()
 	if err != nil {
 		return err
+	}
+
+	switch driver.ImageOSType {
+	case "REDHAT664":
+	case "REDHAT764":
+		err = driver.clearIPTablesConfiguration()
+		if err != nil {
+			return err
+		}
+
+		break
 	}
 
 	log.Infof("Server '%s' has been successfully created.", server.Name)

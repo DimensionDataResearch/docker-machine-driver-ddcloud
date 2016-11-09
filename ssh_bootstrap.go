@@ -22,7 +22,7 @@ import (
 
 // Bootstrap key-based SSH authentication by installing an SSH public key on the target machine.
 func (driver *Driver) installSSHKey() error {
-	if driver.ServerID == "" {
+	if !driver.isServerCreated() {
 		return errors.New("Server has not been deployed")
 	}
 
