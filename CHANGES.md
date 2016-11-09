@@ -1,5 +1,7 @@
 # Changes
 
+## v0.6
+
 ## v0.5
 
 Bug fixes:
