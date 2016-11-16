@@ -2,11 +2,12 @@
 
 ## v0.8
 
-Breaking changes:
-
-* New features:
+New features:
 
 * The driver can now use the new `--ddcloud-mcp-endpoint` command-line argument (environment: `MCP_ENDPOINT`) to designate a custom end-point URI for the CloudControl API.
+* The driver will now generate a new SSH keypair if one was not already configured via command-line arguments.
+
+Breaking changes:
 
 * The following command-line arguments have changed to be consistent with their corresponding environment variables:
   * `--ddcloud-user` is now `--ddcloud-mcp-user`
