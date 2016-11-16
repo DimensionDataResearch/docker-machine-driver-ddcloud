@@ -14,7 +14,7 @@ Alternatively, you can use the `--ddcloud-create-ssh-firewall-rule` flag when cr
 
 ```bash
 docker-machine create --driver ddcloud \
-	--ddcloud-region AU \
+	--ddcloud-mcp-region AU \
 	--ddcloud-datacenter AU9 \
 	--ddcloud-networkdomain 'my-docker-domain' \
 	--ddcloud-vlan 'my-docker-vlan' \
@@ -29,12 +29,16 @@ If you're running on Windows, just remove the backslashes so the whole command i
 
 The driver supports all Docker Machine commands, and can be configured using the following command-line arguments (or environment variables):
 
-* `ddcloud-user` - The user name used to authenticate to the CloudControl API.  
+* `ddcloud-mcp-user` - The user name used to authenticate to the CloudControl API.  
 Environment: `MCP_USER`
-* `ddcloud-password` - The password used to authenticate to the CloudControl API.  
+* `ddcloud-mcp-password` - The password used to authenticate to the CloudControl API.  
 Environment: `MCP_PASSWORD`.
-* `ddcloud-region` - The CloudControl region name (e.g. AU, NA, EU, etc).  
+* `ddcloud-mcp-region` - The CloudControl region name (e.g. AU, NA, EU, etc).  
+Either `ddcloud-mcp-region` or `ddcloud-mcp-endpoint` must be specified.  
 Environment: `MCP_REGION`.
+* `ddcloud-mcp-endpoint` - A custom end-point URI for the CloudControl API.  
+Either `ddcloud-mcp-endpoint` or `ddcloud-mcp-region` must be specified.  
+Environment: `MCP_ENDPOINT`.
 * `ddcloud-networkdomain` - The name of the target CloudControl network domain.
 * `ddcloud-datacenter` - The name of the CloudControl datacenter (e.g. NA1, AU9) in which the network domain is located.
 * `ddcloud-vlan` - The name of the target CloudControl VLAN.
