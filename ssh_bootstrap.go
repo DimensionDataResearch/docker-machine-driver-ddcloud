@@ -106,6 +106,23 @@ func (driver *Driver) installSSHKey() error {
 	return nil
 }
 
+// Generate an SSH key pair, and save it into the machine store folder.
+func (driver *Driver) generateSSHKey() error {
+	if driver.SSHKeyPath != "" {
+		return errors.New("SSH key path already configured")
+	}
+
+	driver.SSHKeyPath = driver.ResolveStorePath("id_rsa")
+	err := ssh.GenerateSSHKey(driver.SSHKeyPath)
+	if err != nil {
+		log.Errorf("Failed to generate SSH key pair: %s", err.Error())
+
+		return err
+	}
+
+	return nil
+}
+
 // Import the configured SSH key files into the machine store folder.
 func (driver *Driver) importSSHKey() error {
 	if driver.SSHKey == "" {
@@ -117,14 +134,14 @@ func (driver *Driver) importSSHKey() error {
 	)
 	err := copySSHKey(driver.SSHKey, driver.SSHKeyPath)
 	if err != nil {
-		log.Infof("Couldn't copy SSH private key : %s", err.Error())
+		log.Infof("Couldn't copy SSH private key: %s", err.Error())
 
 		return err
 	}
 
 	err = copySSHKey(driver.SSHKey+".pub", driver.SSHKeyPath+".pub")
 	if err != nil {
-		log.Infof("Couldn't copy SSH public key : %s", err.Error())
+		log.Infof("Couldn't copy SSH public key: %s", err.Error())
 
 		return err
 	}

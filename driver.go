@@ -263,11 +263,19 @@ func (driver *Driver) PreCreateCheck() error {
 
 // Create a new Docker Machine instance on CloudControl.
 func (driver *Driver) Create() error {
-	log.Infof("Importing SSH key...")
-
-	err := driver.importSSHKey()
-	if err != nil {
-		return err
+	var err error
+	if driver.SSHKey != "" {
+		log.Infof("Importing SSH key '%s'...", driver.SSHKey)
+		err = driver.importSSHKey()
+		if err != nil {
+			return err
+		}
+	} else {
+		log.Infof("Generating new SSH key...")
+		err = driver.generateSSHKey()
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Infof("Creating server '%s'...", driver.MachineName)
