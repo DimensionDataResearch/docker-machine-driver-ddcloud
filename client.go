@@ -60,13 +60,15 @@ func (driver *Driver) getCloudControlClient() (client *compute.Client, err error
 		return
 	}
 
-	if driver.CloudControlRegion == "" {
-		err = errors.New("Cannot connect to CloudControl API (region not been configured)")
+	if driver.CloudControlRegion != "" {
+		client = compute.NewClient(driver.CloudControlRegion, driver.CloudControlUser, driver.CloudControlPassword)
+	} else if driver.CloudControlEndPointURI != "" {
+		client = compute.NewClientWithBaseAddress(driver.CloudControlEndPointURI, driver.CloudControlUser, driver.CloudControlPassword)
+	} else {
+		err = errors.New("Cannot connect to CloudControl API (neither region nor custom end-point URI have been configured)")
 
 		return
 	}
-
-	client = compute.NewClient(driver.CloudControlRegion, driver.CloudControlUser, driver.CloudControlPassword)
 	client.ConfigureRetry(clientMaxRetry, clientRetryPeriod)
 
 	driver.client = client

@@ -1,5 +1,18 @@
 # Changes
 
+## v0.8
+
+Breaking changes:
+
+* New features:
+
+* The driver can now use the new `--ddcloud-mcp-endpoint` command-line argument (environment: `MCP_ENDPOINT`) to designate a custom end-point URI for the CloudControl API.
+
+* The following command-line arguments have changed to be consistent with their corresponding environment variables:
+  * `--ddcloud-user` is now `--ddcloud-mcp-user`
+  * `--ddcloud-password` is now `--ddcloud-mcp-password`
+  * `--ddcloud-region` is now `--ddcloud-mcp-region`
+
 ## v0.7
 
 New features:

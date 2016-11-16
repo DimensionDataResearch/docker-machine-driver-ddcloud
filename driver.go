@@ -30,8 +30,11 @@ type Driver struct {
 	// The CloudControl password
 	CloudControlPassword string
 
-	// The CloudControl region code
+	// The CloudControl region name
 	CloudControlRegion string
+
+	// A custom CloudControl API end-point URI
+	CloudControlEndPointURI string
 
 	// The name of the target network domain.
 	NetworkDomainName string
@@ -96,20 +99,26 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 	return []mcnflag.Flag{
 		mcnflag.StringFlag{
 			EnvVar: "MCP_USER",
-			Name:   "ddcloud-user",
+			Name:   "ddcloud-mcp-user",
 			Usage:  "The CloudControl user name",
 			Value:  "",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "MCP_PASSWORD",
-			Name:   "ddcloud-password",
+			Name:   "ddcloud-mcp-password",
 			Usage:  "The CloudControl password",
 			Value:  "",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "MCP_REGION",
-			Name:   "ddcloud-region",
+			Name:   "ddcloud-mcp-region",
 			Usage:  "The CloudControl region name",
+			Value:  "",
+		},
+		mcnflag.StringFlag{
+			EnvVar: "MCP_ENDPOINT",
+			Name:   "ddcloud-mcp-endpoint",
+			Usage:  "A custom end-point URI for the CloudControl API",
 			Value:  "",
 		},
 		mcnflag.StringFlag{
@@ -180,9 +189,11 @@ func (driver *Driver) DriverName() string {
 
 // SetConfigFromFlags assigns and verifies the command-line arguments presented to the driver.
 func (driver *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
-	driver.CloudControlUser = flags.String("ddcloud-user")
-	driver.CloudControlPassword = flags.String("ddcloud-password")
-	driver.CloudControlRegion = flags.String("ddcloud-region")
+	driver.CloudControlRegion = flags.String("ddcloud-mcp-region")
+	driver.CloudControlEndPointURI = flags.String("ddcloud-mcp-endpoint")
+
+	driver.CloudControlUser = flags.String("ddcloud-mcp-user")
+	driver.CloudControlPassword = flags.String("ddcloud-mcp-password")
 
 	driver.NetworkDomainName = flags.String("ddcloud-networkdomain")
 	driver.DataCenterID = flags.String("ddcloud-datacenter")
@@ -192,7 +203,6 @@ func (driver *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	driver.SSHPort = flags.Int("ddcloud-ssh-port")
 	driver.SSHUser = flags.String("ddcloud-ssh-user")
 	driver.SSHKey = flags.String("ddcloud-ssh-key")
-
 	driver.SSHBootstrapPassword = flags.String("ddcloud-ssh-bootstrap-password")
 
 	driver.CreateSSHFirewallRule = flags.Bool("ddcloud-create-ssh-firewall-rule")
