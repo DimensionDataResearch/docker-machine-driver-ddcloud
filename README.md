@@ -61,10 +61,10 @@ Environment: `MCP_SSH_BOOTSTRAP_PASSWORD`
 Environment: `MCP_CLIENT_PUBLIC_IP`.
 * `ddcloud-use-private-ip` - Don't create NAT and firewall rules for target server (you will need to be connected to the VPN for your target data centre).
 
-## Installing the provider
+## Installing the driver
 
 Download the [latest release](https://github.com/DimensionDataResearch/docker-machine-driver-ddcloud/releases) and place the provider executable in the same directory as `docker-machine` executable (or somewhere on your `PATH`).
 
-## Building the provider
+## Building the driver
 
 If you'd rather run from source, simply run `make install` and you're good to go.
