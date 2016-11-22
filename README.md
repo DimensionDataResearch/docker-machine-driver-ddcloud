@@ -65,6 +65,12 @@ Environment: `MCP_CLIENT_PUBLIC_IP`.
 
 Download the [latest release](https://github.com/DimensionDataResearch/docker-machine-driver-ddcloud/releases) and place the provider executable in the same directory as `docker-machine` executable (or somewhere on your `PATH`).
 
+### UI plugin for Rancher
+
+Rancher can automatically generate a UI for calling the `ddcloud` driver for Docker Machine, but we also have a UI plugin for Rancher (it's not yet as mature as the Docker Machine driver):
+
+https://github.com/DimensionDataResearch/rancher-ui-driver-ddcloud#using
+
 ## Building the driver
 
 If you'd rather run from source, simply run `make install` and you're good to go.
