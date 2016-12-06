@@ -1,5 +1,7 @@
 # Docker Machine driver for Dimension Data CloudControl
 
+If you want detailed instructions, click [here](docs/setup.md). Otherwise, keep reading for quickstart documentation.
+
 ## Usage
 
 You will need:
