@@ -21,16 +21,19 @@ In other terms, if you have already used the CloudControl web interface, then yo
 
 ## How to install Docker Machine?
 
-On Mac and on Windows, Docker Machine is installed along with other Docker products when you install the Docker Toolbox. For details, check [the download page for Docker Toolbox](https://www.docker.com/products/docker-toolbox) first, then look either at [Mac installation instructions](https://docs.docker.com/toolbox/toolbox_install_mac/) or [Windows installation instructions](https://docs.docker.com/toolbox/toolbox_install_windows/).
-
-As an alternative to the installation of the full Docker Toolbox, you may prefer the direct download of the Docker Machine executable. For example on Mac and on Linux:
+The Docker Machine executable can be downloaded and installed directly. For example on Mac and on Linux run following command:
 
 ```shell
 $ curl -L https://github.com/docker/machine/releases/download/v0.8.2/docker-machine-`uname -s`-`uname -m` >/usr/local/bin/docker-machine
 $ chmod +x /usr/local/bin/docker-machine
 ```
 
-Quickly check the installation of Docker Machine with the following command:
+For workstations with Windows or any other operating system, you can download the latest release of Docker Machine from https://github.com/docker/machine/releases
+
+
+As an alternative, on Mac and on Windows, Docker Machine is coming along along with other Docker products when you install the Docker Toolbox. For details, check [the download page for Docker Toolbox](https://www.docker.com/products/docker-toolbox) first, then look either at [Mac installation instructions](https://docs.docker.com/toolbox/toolbox_install_mac/) or [Windows installation instructions](https://docs.docker.com/toolbox/toolbox_install_windows/).
+
+Whatever option you considered, you can quickly check the installation of Docker Machine with following command:
 
 ```
 $ docker-machine –v
