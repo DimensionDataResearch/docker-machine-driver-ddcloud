@@ -148,7 +148,7 @@ $ docker-machine create --driver ddcloud \
 On Windows just remove the backslashes so the whole command is on a single line.
 
 ```
-> docker-machine create --driver ddcloud --ddcloud-region EU  --ddcloud-datacenter EU6 --ddcloud-networkdomain 'DockerMachineFox'  --ddcloud-vlan 'DockerMachineNetwork' --ddcloud-ssh-key ~/.ssh/id_rsa mcp-eu6-01
+C:\>docker-machine create --driver ddcloud --ddcloud-region EU  --ddcloud-datacenter EU6 --ddcloud-networkdomain 'DockerMachineFox'  --ddcloud-vlan 'DockerMachineNetwork' --ddcloud-ssh-key ~/.ssh/id_rsa mcp-eu6-01
 ```
 You can check the IP address of the new host, and locate security artifacts, with following command.
 
@@ -175,7 +175,7 @@ $ eval $(docker-machine env mcp-eu6-01)
 On Windows you may have to use following command instead:
 
 ```
->@FOR /f "tokens=*" %i IN ('docker-machine env mcp-eu6-01') DO @%i
+C:\>@FOR /f "tokens=*" %i IN ('docker-machine env mcp-eu6-01') DO @%i
 ```
 
 As an example, let's try running the official Nginx container:
@@ -241,7 +241,7 @@ $ eval $(docker-machine env mcp-eu6-02)
 And on Windows:
 
 ```
->@FOR /f "tokens=*" %i IN ('docker-machine env mcp-eu6-02') DO @%i
+C:\>@FOR /f "tokens=*" %i IN ('docker-machine env mcp-eu6-02') DO @%i
 ```
 
 ## How to execute commands on the host?
