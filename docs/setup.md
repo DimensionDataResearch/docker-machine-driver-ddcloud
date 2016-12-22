@@ -45,9 +45,9 @@ Set your MCP credentials in the environment, and the initial password for hosts 
 On Windows there are multiple ways to set variables. You can do this by running the following in powershell:
 
 ```powershell
-[Environment]::SetEnvironmentVariable("MCP_USER", "<your-name>", "Process")
-[Environment]::SetEnvironmentVariable("MCP_PASSWORD", "<your-password>", "Process")
-[Environment]::SetEnvironmentVariable("MCP_SSH_BOOTSTRAP_PASSWORD", "<root-password>", "Process")
+$env:MCP_USER=<your-name>
+$env:MCP_PASSWORD=<your-password>
+$env:MCP_SSH_BOOTSTRAP_PASSWORD=<root-password>
 ```
 
 Alternatively, open the Configuration Panel and look for System settings. Then add system environment variables
