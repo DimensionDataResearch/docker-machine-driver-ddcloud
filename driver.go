@@ -8,13 +8,14 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
+	"os"
+
 	"github.com/DimensionDataResearch/go-dd-cloud-compute/compute"
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/state"
-	"net"
-	"os"
 )
 
 // DefaultImageName is the name of the default OS image used to create machines.
@@ -150,7 +151,7 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringFlag{
 			EnvVar: "MCP_SSH_KEY",
 			Name:   "ddcloud-ssh-key",
-			Usage:  "The SSH key file to use",
+			Usage:  "The SSH key file to use (if not specified, then a new key will be generated)",
 			Value:  "",
 		},
 		mcnflag.IntFlag{
