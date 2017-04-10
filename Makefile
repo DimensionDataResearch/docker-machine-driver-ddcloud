@@ -1,9 +1,12 @@
-VERSION = 0.9
+VERSION = 0.9.1
 
 default: fmt build test
 
 fmt:
 	go fmt github.com/DimensionDataResearch/docker-machine-driver-ddcloud/...
+
+clean:
+	rm -rf _bin
 
 # Peform a development (current-platform-only) build.
 dev: version fmt
@@ -26,9 +29,9 @@ build-mac64:
 
 # Produce archives for a GitHub release.
 dist: build
-	zip -9 _bin/windows-amd64.zip _bin/windows-amd64/docker-machine-driver-ddcloud.exe
-	zip -9 _bin/linux-amd64.zip _bin/linux-amd64/docker-machine-driver-ddcloud
-	zip -9 _bin/darwin-amd64.zip _bin/darwin-amd64/docker-machine-driver-ddcloud
+	zip -9 _bin/docker-machine-driver-ddcloud-v$(VERSION)-windows-amd64.zip _bin/windows-amd64/docker-machine-driver-ddcloud.exe
+	zip -9 _bin/docker-machine-driver-ddcloud-v$(VERSION)-linux-amd64.zip _bin/linux-amd64/docker-machine-driver-ddcloud
+	zip -9 _bin/docker-machine-driver-ddcloud-v$(VERSION)-darwin-amd64.zip _bin/darwin-amd64/docker-machine-driver-ddcloud
 
 test: fmt
 	go test -v github.com/DimensionDataResearch/docker-machine-driver-ddcloud/...

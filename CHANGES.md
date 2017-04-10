@@ -1,5 +1,11 @@
 # Changes
 
+## v0.9.1
+
+Bug fixes:
+
+* Specify firewall rule placement when exposing deployed server.
+
 ## v0.9
 
 New features:
@@ -12,7 +18,6 @@ New features:
 
 * The driver can now use the new `--ddcloud-mcp-endpoint` command-line argument (environment: `MCP_ENDPOINT`) to designate a custom end-point URI for the CloudControl API.
 * The driver will now generate a new SSH keypair if one was not already configured via command-line arguments.
-
 
 Breaking changes:
 

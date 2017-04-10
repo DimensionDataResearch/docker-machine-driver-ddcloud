@@ -8,10 +8,11 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/DimensionDataResearch/go-dd-cloud-compute/compute"
-	"github.com/docker/machine/libmachine/log"
 	"strings"
 	"time"
+
+	"github.com/DimensionDataResearch/go-dd-cloud-compute/compute"
+	"github.com/docker/machine/libmachine/log"
 )
 
 // CloudControl client retry
@@ -594,6 +595,7 @@ func (driver *Driver) createSSHFirewallRule() error {
 	ruleConfiguration.MatchSourceAddress(driver.ClientPublicIPAddress)
 	ruleConfiguration.MatchDestinationAddress(driver.IPAddress)
 	ruleConfiguration.MatchDestinationPort(driver.SSHPort)
+	ruleConfiguration.PlaceFirst()
 
 	client, err := driver.getCloudControlClient()
 	if err != nil {
