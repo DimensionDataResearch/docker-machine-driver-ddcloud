@@ -284,6 +284,17 @@ func (driver *Driver) buildDeploymentConfiguration() (deploymentConfiguration co
 		return
 	}
 
+	// Specify private IPv4 address or VLAN Id.
+	var (
+		vlanID             *string
+		privateIPv4Address *string
+	)
+	if driver.PrivateIPAddress != "" {
+		privateIPv4Address = &driver.PrivateIPAddress
+	} else {
+		vlanID = &driver.VLANID
+	}
+
 	deploymentConfiguration = compute.ServerDeploymentConfiguration{
 		Name:                  driver.MachineName,
 		Description:           fmt.Sprintf("%s (created by Docker Machine).", driver.MachineName),
@@ -292,7 +303,8 @@ func (driver *Driver) buildDeploymentConfiguration() (deploymentConfiguration co
 		Network: compute.VirtualMachineNetwork{
 			NetworkDomainID: driver.NetworkDomainID,
 			PrimaryAdapter: compute.VirtualMachineNetworkAdapter{
-				VLANID: &driver.VLANID,
+				VLANID:             vlanID,
+				PrivateIPv4Address: privateIPv4Address,
 			},
 		},
 		PrimaryDNS:   "8.8.8.8",

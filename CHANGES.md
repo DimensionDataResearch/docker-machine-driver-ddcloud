@@ -1,5 +1,11 @@
 # Changes
 
+## v0.9.2
+
+Enhancements:
+
+* Can now specify a custom private IPv4 address for the server.
+
 ## v0.9.1
 
 Bug fixes:

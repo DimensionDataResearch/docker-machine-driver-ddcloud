@@ -138,6 +138,11 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 			Value: "",
 		},
 		mcnflag.StringFlag{
+			Name:  "ddcloud-private-ipv4",
+			Usage: "An optional IPv4 address for the server",
+			Value: "",
+		},
+		mcnflag.StringFlag{
 			Name:  "ddcloud-image-name",
 			Usage: fmt.Sprintf(`The name of OS image used to create the target machine. Default: "%s"`, DefaultImageName),
 			Value: DefaultImageName,
@@ -198,6 +203,8 @@ func (driver *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 
 	driver.NetworkDomainName = flags.String("ddcloud-networkdomain")
 	driver.DataCenterID = flags.String("ddcloud-datacenter")
+	driver.PrivateIPAddress = flags.String("ddcloud-private-ipv4")
+	driver.VLANName = flags.String("ddcloud-vlan")
 	driver.VLANName = flags.String("ddcloud-vlan")
 	driver.ImageName = flags.String("ddcloud-image-name")
 
