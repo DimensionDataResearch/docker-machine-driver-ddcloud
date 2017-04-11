@@ -21,6 +21,9 @@ import (
 // DefaultImageName is the name of the default OS image used to create machines.
 const DefaultImageName = "Ubuntu 14.04 2 CPU"
 
+// DefaultDockerSSLPort is the default SSL API port used by Docker.
+const DefaultDockerSSLPort = 2376
+
 // Driver is the Docker Machine driver for Dimension Data CloudControl.
 type Driver struct {
 	*drivers.BaseDriver
@@ -81,11 +84,17 @@ type Driver struct {
 	// The initial password used to authenticate to target machines when installing the SSH key.
 	SSHBootstrapPassword string
 
-	// Create a firewall rule to allow SSH access to the taret server?
+	// Create a firewall rule to allow SSH access to the target server?
 	CreateSSHFirewallRule bool
+
+	// Create a firewall rule to allow Docker API access to the target server?
+	CreateDockerFirewallRule bool
 
 	// The Id of the firewall rule (if any) created for inbound SSH access to the target server.
 	SSHFirewallRuleID string
+
+	// The Id of the firewall rule (if any) created for inbound Docker API access to the target server.
+	DockerFirewallRuleID string
 
 	// The client's public (external) IP address.
 	ClientPublicIPAddress string
@@ -175,6 +184,10 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:  "ddcloud-create-ssh-firewall-rule",
 			Usage: "Create a firewall rule to allow SSH access to the target server? Default: false",
 		},
+		mcnflag.BoolFlag{
+			Name:  "ddcloud-create-docker-firewall-rule",
+			Usage: "Create a firewall rule to allow Docker API access to the target server? Default: false",
+		},
 		mcnflag.StringFlag{
 			EnvVar: "MCP_CLIENT_PUBLIC_IP",
 			Name:   "ddcloud-client-public-ip",
@@ -214,6 +227,7 @@ func (driver *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	driver.SSHBootstrapPassword = flags.String("ddcloud-ssh-bootstrap-password")
 
 	driver.CreateSSHFirewallRule = flags.Bool("ddcloud-create-ssh-firewall-rule")
+	driver.CreateDockerFirewallRule = flags.Bool("ddcloud-create-ssh-firewall-rule")
 	driver.ClientPublicIPAddress = flags.String("ddcloud-client-public-ip")
 	driver.UsePrivateIP = flags.Bool("ddcloud-use-private-ip")
 
@@ -322,6 +336,28 @@ func (driver *Driver) Create() error {
 				return err
 			}
 		}
+
+		if driver.CreateDockerFirewallRule {
+			if driver.ClientPublicIPAddress == "" {
+				driver.ClientPublicIPAddress, err = getClientPublicIPv4Address()
+				if err != nil {
+					return err
+				}
+			}
+
+			log.Infof("Creating firewall rule to enable inbound Docker API traffic from local machine '%s' ('%s') to '%s' ('%s':%d)...",
+				os.Getenv("HOST"),
+				driver.ClientPublicIPAddress,
+				driver.MachineName,
+				driver.IPAddress,
+				DefaultDockerSSLPort,
+			)
+
+			err = driver.createDockerFirewallRule()
+			if err != nil {
+				return err
+			}
+		}
 	} else {
 		log.Infof("Server '%s' has private IP '%s'.", driver.MachineName, driver.PrivateIPAddress)
 	}
@@ -397,6 +433,13 @@ func (driver *Driver) Remove() error {
 
 	if driver.isSSHFirewallRuleCreated() {
 		err = driver.deleteSSHFirewallRule()
+		if err != nil {
+			return err
+		}
+	}
+
+	if driver.isDockerFirewallRuleCreated() {
+		err = driver.deleteDockerFirewallRule()
 		if err != nil {
 			return err
 		}

@@ -586,7 +586,7 @@ func (driver *Driver) createSSHFirewallRule() error {
 	}
 
 	if driver.isSSHFirewallRuleCreated() {
-		return fmt.Errorf("Firewall rule '%s' has already been created for server '%s'", driver.SSHFirewallRuleID, driver.MachineName)
+		return fmt.Errorf("SSH firewall rule '%s' has already been created for server '%s'", driver.SSHFirewallRuleID, driver.MachineName)
 	}
 
 	log.Debugf("Creating SSH firewall rule for server '%s' (allow inbound traffic on port %d from '%s' to '%s')...",
@@ -633,7 +633,7 @@ func (driver *Driver) deleteSSHFirewallRule() error {
 	}
 
 	if !driver.isSSHFirewallRuleCreated() {
-		return fmt.Errorf("Firewall rule has not been created for server '%s'", driver.MachineName)
+		return fmt.Errorf("SSH firewall rule has not been created for server '%s'", driver.MachineName)
 	}
 
 	log.Debugf("Deleting SSH firewall rule '%s' for server '%s'...",
@@ -651,9 +651,93 @@ func (driver *Driver) deleteSSHFirewallRule() error {
 		return err
 	}
 
-	log.Debugf("Deleted firewall rule '%s'.", driver.SSHFirewallRuleID)
+	log.Debugf("Deleted SSH firewall rule '%s'.", driver.SSHFirewallRuleID)
 
 	driver.SSHFirewallRuleID = ""
+
+	return nil
+}
+
+// Has a firewall rule been created to allow inbound Docker for the server?
+func (driver *Driver) isDockerFirewallRuleCreated() bool {
+	return driver.DockerFirewallRuleID != ""
+}
+
+// Create a firewall rule to enable inbound Docker connections to the target server from the client machine's (external) IP address.
+func (driver *Driver) createDockerFirewallRule() error {
+	if !driver.isServerCreated() {
+		return fmt.Errorf("Server '%s' has not been created", driver.MachineName)
+	}
+
+	if driver.isDockerFirewallRuleCreated() {
+		return fmt.Errorf("Docker firewall rule '%s' has already been created for server '%s'", driver.DockerFirewallRuleID, driver.MachineName)
+	}
+
+	log.Debugf("Creating Docker firewall rule for server '%s' (allow inbound traffic on port %d from '%s' to '%s')...",
+		driver.MachineName,
+		DefaultDockerSSLPort,
+		driver.ClientPublicIPAddress,
+		driver.IPAddress,
+	)
+
+	ruleConfiguration := compute.FirewallRuleConfiguration{
+		Name:            driver.buildFirewallRuleName("Docker"),
+		NetworkDomainID: driver.NetworkDomainID,
+	}
+	ruleConfiguration.Accept()
+	ruleConfiguration.Enable()
+	ruleConfiguration.IPv4()
+	ruleConfiguration.TCP()
+	ruleConfiguration.MatchSourceAddress(driver.ClientPublicIPAddress)
+	ruleConfiguration.MatchDestinationAddress(driver.IPAddress)
+	ruleConfiguration.MatchDestinationPort(DefaultDockerSSLPort)
+	ruleConfiguration.PlaceFirst()
+
+	client, err := driver.getCloudControlClient()
+	if err != nil {
+		return err
+	}
+
+	firewallRuleID, err := client.CreateFirewallRule(ruleConfiguration)
+	if err != nil {
+		return err
+	}
+
+	driver.DockerFirewallRuleID = firewallRuleID
+
+	log.Debugf("Created Docker firewall rule '%s' for server '%s'.", driver.DockerFirewallRuleID, driver.ServerID)
+
+	return nil
+}
+
+// Delete the firewall rule that enables inbound Docker connections to the target server from the client machine's (external) IP address.
+func (driver *Driver) deleteDockerFirewallRule() error {
+	if !driver.isServerCreated() {
+		return fmt.Errorf("Server '%s' has not been created", driver.MachineName)
+	}
+
+	if !driver.isDockerFirewallRuleCreated() {
+		return fmt.Errorf("Docker firewall rule has not been created for server '%s'", driver.MachineName)
+	}
+
+	log.Debugf("Deleting Docker firewall rule '%s' for server '%s'...",
+		driver.MachineName,
+		driver.DockerFirewallRuleID,
+	)
+
+	client, err := driver.getCloudControlClient()
+	if err != nil {
+		return err
+	}
+
+	err = client.DeleteFirewallRule(driver.DockerFirewallRuleID)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("Deleted Docker firewall rule '%s'.", driver.DockerFirewallRuleID)
+
+	driver.DockerFirewallRuleID = ""
 
 	return nil
 }

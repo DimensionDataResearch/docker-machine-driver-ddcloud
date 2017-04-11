@@ -1,5 +1,11 @@
 # Changes
 
+## v0.9.3
+
+Enhancements:
+
+* The driver now creates a firewall rule to permit Docker API access if `--ddcloud-create-docker-firewall-rule` is specified.
+
 ## v0.9.2
 
 Enhancements:
