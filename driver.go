@@ -153,7 +153,7 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 		},
 		mcnflag.StringFlag{
 			Name:  "ddcloud-image-name",
-			Usage: fmt.Sprintf(`The name of OS image used to create the target machine. Default: "%s"`, DefaultImageName),
+			Usage: fmt.Sprintf(`The name of the image used to create the target machine. Default: "%s"`, DefaultImageName),
 			Value: DefaultImageName,
 		},
 		mcnflag.StringFlag{

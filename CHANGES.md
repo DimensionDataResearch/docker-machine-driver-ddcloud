@@ -1,5 +1,11 @@
 # Changes
 
+## v0.9.4
+
+Enhancements:
+
+* Support for using either OS or customer images.
+
 ## v0.9.3
 
 Enhancements:

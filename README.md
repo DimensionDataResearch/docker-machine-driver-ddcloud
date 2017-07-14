@@ -40,8 +40,7 @@ Environment: `MCP_REGION`.
 * `ddcloud-networkdomain` - The name of the target CloudControl network domain.
 * `ddcloud-datacenter` - The name of the CloudControl datacenter (e.g. NA1, AU9) in which the network domain is located.
 * `ddcloud-vlan` - The name of the target CloudControl VLAN.
-* `ddcloud-image-name` - The name of the OS image used to create the target machine.
-Note that only OS images are supported for now, not customer images.
+* `ddcloud-image-name` - The name of the image used to create the target machine.
 Additionally, the OS must be a Linux distribution supported by docker-machine (Ubuntu 12.04 and above are supported, but RedHat 6 and 7 are not supported due to iptables configuration issues).
 * `ddcloud-ssh-user` - The SSH username to use.
 Default: "root".

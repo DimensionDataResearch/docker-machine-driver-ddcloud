@@ -188,22 +188,34 @@ func (driver *Driver) resolveVLAN() error {
 	return nil
 }
 
-// Retrieve the target OS image.
-func (driver *Driver) getOSImage() (*compute.OSImage, error) {
+// Retrieve the target image.
+func (driver *Driver) getImage() (image compute.Image, err error) {
 	if driver.ImageID == "" {
 		return nil, errors.New("Image Id has not been resolved")
 	}
 
-	client, err := driver.getCloudControlClient()
+	var client *compute.Client
+	client, err = driver.getCloudControlClient()
 	if err != nil {
 		return nil, err
 	}
 
-	return client.GetOSImage(driver.ImageID)
+	image, err = client.GetOSImage(driver.ImageID)
+	if err != nil {
+		return
+	}
+	if image == nil {
+		image, err = client.GetCustomerImage(driver.ImageID)
+		if err != nil {
+			return
+		}
+	}
+
+	return
 }
 
-// Resolve (find) the target OS image.
-func (driver *Driver) resolveOSImage() error {
+// Resolve (find) the target image.
+func (driver *Driver) resolveImage() error {
 	driver.ImageID = ""
 
 	client, err := driver.getCloudControlClient()
@@ -211,26 +223,33 @@ func (driver *Driver) resolveOSImage() error {
 		return err
 	}
 
-	image, err := client.FindOSImage(driver.ImageName, driver.DataCenterID)
+	var image compute.Image
+	image, err = client.FindOSImage(driver.ImageName, driver.DataCenterID)
 	if err != nil {
 		return err
 	}
 	if image == nil {
-		log.Errorf("OS image '%s' was not found in data centre '%s'.", driver.ImageName, driver.DataCenterID)
+		image, err = client.FindCustomerImage(driver.ImageName, driver.DataCenterID)
+		if err != nil {
+			return err
+		}
+	}
+	if image == nil {
+		log.Errorf("Image '%s' was not found in data centre '%s'.", driver.ImageName, driver.DataCenterID)
 
-		return fmt.Errorf("OS image '%s' was not found in data centre '%s'", driver.ImageName, driver.DataCenterID)
+		return fmt.Errorf("Image '%s' was not found in data centre '%s'", driver.ImageName, driver.DataCenterID)
 	}
 
-	if image.OperatingSystem.Family != "UNIX" {
-		return fmt.Errorf("OS image '%s' in data centre '%s' is not from a supported OS family (expected 'UNIX', but found '%s')",
+	if image.GetOS().Family != "UNIX" {
+		return fmt.Errorf("Image '%s' in data centre '%s' is not from a supported OS family (expected 'UNIX', but found '%s')",
 			driver.ImageName,
 			driver.DataCenterID,
-			image.OperatingSystem.Family,
+			image.GetOS().Family,
 		)
 	}
 
-	driver.ImageID = image.ID
-	driver.ImageOSType = image.OperatingSystem.ID
+	driver.ImageID = image.GetID()
+	driver.ImageOSType = image.GetOS().ID
 
 	return nil
 }
@@ -273,8 +292,8 @@ func (driver *Driver) deployServer() (*compute.Server, error) {
 
 // Build a deployment configuration for the target server.
 func (driver *Driver) buildDeploymentConfiguration() (deploymentConfiguration compute.ServerDeploymentConfiguration, err error) {
-	var image *compute.OSImage
-	image, err = driver.getOSImage()
+	var image compute.Image
+	image, err = driver.getImage()
 	if err != nil {
 		return
 	}
@@ -312,7 +331,7 @@ func (driver *Driver) buildDeploymentConfiguration() (deploymentConfiguration co
 
 		Start: true,
 	}
-	deploymentConfiguration.ApplyOSImage(image)
+	image.ApplyTo(&deploymentConfiguration)
 
 	return
 }
