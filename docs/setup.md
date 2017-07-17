@@ -1,4 +1,4 @@
-# Setup of your environment
+# Docker Machine with Dimension Data cloud services
 
 Docker Machine provides a unified experience of running containers across multiple cloud platforms. On this page we focus specifically on the [Managed Cloud Platform from Dimension Data](http://cloud.dimensiondata.com/). As a software developer, you may want to handle containers at shared or at on-premises cloud facilities provided by Dimension Data. Follow instructions below and learn how to harness the power of containers, right from your laptop.
 
@@ -8,11 +8,11 @@ As a starting point, the diagram below puts Docker, Docker Machine and Docker En
 
 [Docker](https://www.docker.com/) and [Docker Machine](https://docs.docker.com/machine/overview/) are sitting at the development workstation. Docker Machine is a tool that lets you install [Docker Engine](https://www.docker.com/products/docker-engine) on virtual hosts, and manage the hosts with `docker-machine` commands. You can use Machine to create Docker hosts on your local Mac or Windows workstation, on your company network, in your data center, or on cloud providers like AWS or Dimension Data. In other terms, Docker Machine allows software engineers to handle containers almost anywhere on Earth.
 
-Docker Machine interact with any [Managed Cloud Platform](http://cloud.dimensiondata.com/), be it a public, hosted or on-premises cloud facilities delivered by Dimension Data or by one partner of the One Cloud alliance.
+Docker Machine interact with any [Managed Cloud Platform](http://cloud.dimensiondata.com/), be it a public, hosted or on-premises cloud facilities delivered by Dimension Data or by a partner of the One Cloud alliance.
 
 ## From CloudControl to Docker Machine
 
-The consumption of Docker containers on the Managed Cloud Platform is based on following elements:
+The consumption of Docker containers on the Managed Cloud Platform requires following elements:
 * a working Docker and Docker Machine environment
 * the addition of the Docker Machine driver from Dimension Data
 * MCP credentials
@@ -21,7 +21,7 @@ In other terms, if you have already used the CloudControl web interface, then yo
 
 ## How to install Docker Machine?
 
-The Docker Machine executable can be downloaded and installed directly. For example on Mac and on Linux run following command:
+The Docker Machine executable can be downloaded and installed directly. For example on macOS and on Linux run following command:
 
 ```shell
 $ curl -L https://github.com/docker/machine/releases/download/v0.8.2/docker-machine-`uname -s`-`uname -m` >/usr/local/bin/docker-machine
@@ -30,10 +30,9 @@ $ chmod +x /usr/local/bin/docker-machine
 
 For workstations with Windows or any other operating system, you can download the latest release of Docker Machine from https://github.com/docker/machine/releases
 
+As an alternative, on macOS and on Windows, Docker Machine is coming along with other Docker products when you install the Docker Toolbox. For details, check [the download page for Docker Toolbox](https://www.docker.com/products/docker-toolbox) first, then look either at [macOS installation instructions](https://docs.docker.com/toolbox/toolbox_install_mac/) or [Windows installation instructions](https://docs.docker.com/toolbox/toolbox_install_windows/).
 
-As an alternative, on Mac and on Windows, Docker Machine is coming along along with other Docker products when you install the Docker Toolbox. For details, check [the download page for Docker Toolbox](https://www.docker.com/products/docker-toolbox) first, then look either at [Mac installation instructions](https://docs.docker.com/toolbox/toolbox_install_mac/) or [Windows installation instructions](https://docs.docker.com/toolbox/toolbox_install_windows/).
-
-Whatever option you considered, you can quickly check the installation of Docker Machine with following command:
+Whatever option you consider, you can quickly check the installation of Docker Machine with following command:
 
 ```
 $ docker-machine –v
@@ -43,7 +42,27 @@ Add [the Docker Machine driver from Dimension Data](https://github.com/Dimension
 
 Set your MCP credentials in the environment, and the initial password for hosts as well.
 
-On Mac and Linux:
+On Windows there are multiple ways to set variables. You can do this by running the following in powershell:
+
+```powershell
+$env:MCP_USER=<your-name>
+$env:MCP_PASSWORD=<your-password>
+$env:MCP_SSH_BOOTSTRAP_PASSWORD=<root-password>
+```
+
+Alternatively, open the Configuration Panel and look for System settings. Then add system environment variables
+``MCP_USER``, ``MCP_PASSWORD`` and ``MCP_SSH_BOOTSTRAP_PASSWORD`` and save your changes.
+
+In case you do not have access to system settings of your computer, you can still
+set variables temporarily in a Command Prompt session:
+
+```
+C:\>set MCP_USER=<your-name>
+C:\>set MCP_PASSWORD=<your-password>
+C:\>set MCP_SSH_BOOTSTRAP_PASSWORD=<root-password>
+```
+
+On macOS and Linux you should edit variables for your own user profile:
 
 ```
 $ nano ~/.bash_profile
@@ -114,7 +133,7 @@ If your containers accept other protocols over the internet then you will create
 
 ## How to create a host with Docker Machine?
 
-Use the command `docker-machine create` with appropriate parameters, and indicate the name of the new host. The sample command below creates the machine `mcp-eu-01` at EU6:
+Use the command `docker-machine create` with appropriate parameters, and indicate the name of the new host. The sample command below creates the machine `mcp-eu-01` at EU6 on macOS or on Linux:
 
 ```bash
 $ docker-machine create --driver ddcloud \
@@ -126,10 +145,15 @@ $ docker-machine create --driver ddcloud \
     mcp-eu6-01
 ```
 
+On Windows just remove the backslashes so the whole command is on a single line.
+
+```
+C:\>docker-machine create --driver ddcloud --ddcloud-region EU  --ddcloud-datacenter EU6 --ddcloud-networkdomain 'DockerMachineFox'  --ddcloud-vlan 'DockerMachineNetwork' --ddcloud-ssh-key ~/.ssh/id_rsa mcp-eu6-01
+```
 You can check the IP address of the new host, and locate security artifacts, with following command.
 
 ```bash
-$ docker-machine config mcp-eu6-01
+docker-machine config mcp-eu6-01
 ```
 
 The output should be similar to this:
@@ -142,16 +166,22 @@ The output should be similar to this:
 -H=tcp://168.128.13.169:2376
 ```
 
-Now that you have one host up and running you can activate it with following command:
+Now that you have one host up and running you can activate it with following command on macOS or Linux:
 
 ```bash
 $ eval $(docker-machine env mcp-eu6-01)
 ```
 
+On Windows you may have to use following command instead:
+
+```
+C:\>@FOR /f "tokens=*" %i IN ('docker-machine env mcp-eu6-01') DO @%i
+```
+
 As an example, let's try running the official Nginx container:
 
-```bash
-$ docker run -d -p 8080:80 --name httpserver nginx
+```
+docker run -d -p 8080:80 --name httpserver nginx
 ```
 
 In this command, port 80 in the Nginx container is mapped to port 8080 on the host. This is meaning that we can access the default Nginx page from anywhere. Open the link in a web browser, using the IP address given by the `config` command.
@@ -169,19 +199,19 @@ Congratulations! At this stage you have created a host and deployed a container,
 At the Managed Cloud Platform a stopped server costs far less than a running server. Therefore, a good practice is to stop unused
 hosts when possible.
 
-```shell
-$ docker-machine stop mcp-eu6-01
+```
+docker-machine stop mcp-eu6-01
 ```
 You can start a host when you want using the following command.
 
-```shell
-$ docker-machine start mcp-eu6-01
+```
+docker-machine start mcp-eu6-01
 ```
 
 If for some reason you have to restart a host, use the following command.
 
-```shell
-$ docker-machine restart mcp-eu6-01
+```
+docker-machine restart mcp-eu6-01
 ```
 
 ## How to handle multiple hosts?
@@ -189,8 +219,8 @@ $ docker-machine restart mcp-eu6-01
 Since it is so easy to create remote hosts with Docker Machine, you can quickly end up with several hosts.
 The list of hosts is shown with following command.
 
-```shell
-$ docker-machine ls
+```
+docker-machine ls
 ```
 
 The output should be similar to this:
@@ -202,18 +232,24 @@ mcp-eu6-02   -        ddcloud   Running   tcp://168.128.13.169:2376           v1
 ```
 
 In this example, two hosts are available and `mcp-eu6-01` is currently active. This is meaning that all `docker` commands are executed there.
-You can switch to another host with a command like this:
+You can switch to another host with a command like this on macOS and Linux:
 
-```shell
+```bash
 $ eval $(docker-machine env mcp-eu6-02)
+```
+
+And on Windows:
+
+```
+C:\>@FOR /f "tokens=*" %i IN ('docker-machine env mcp-eu6-02') DO @%i
 ```
 
 ## How to execute commands on the host?
 
 Hosts created by Docker Machine are running Linux, so you can login directly:
 
-```shell
-$ docker-machine ssh mcp-eu6-02
+```
+docker-machine ssh mcp-eu6-02
 ```
 
 Command prompt now reflects the fact that you're logged into the host as root:
@@ -226,20 +262,20 @@ Type the combination `Ctrl-D` to exit the SSH session.
 
 Note that you can also run a command remotely for example.
 
-```shell
-$ docker-machine ssh mcp-eu6-01 apt-get update
+```
+docker-machine ssh mcp-eu6-01 apt-get update
 ```
 
 Not sure what kernel your remote Docker host is using? Type the following:
 
-```shell
-$ docker-machine ssh mcp-eu6-01 uname -r
+```
+docker-machine ssh mcp-eu6-01 uname -r
 ```
 
 ## How to remove a host?
 
 After this command all resources attached to the host will be lost, including permanent storage:
 
-```bash
-$ docker-machine rm mcp-eu6-01
+```
+docker-machine rm mcp-eu6-01
 ```
