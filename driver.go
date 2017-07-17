@@ -61,6 +61,9 @@ type Driver struct {
 	// The Id of the OS image used to create the machine.
 	ImageID string
 
+	// The image type (OS or Customer)
+	ImageType compute.ImageType
+
 	// The operating system type (e.g. "REDHAT764", "CENTOS764", "UBUNTU1464", etc) of the OS image used to create the machine.
 	ImageOSType string
 
@@ -263,21 +266,30 @@ func (driver *Driver) PreCreateCheck() error {
 		return err
 	}
 
-	log.Infof("Resolving OS image '%s' in data centre '%s'...",
+	log.Infof("Resolving image '%s' in data centre '%s'...",
 		driver.ImageName,
 		driver.DataCenterID,
 	)
-	err = driver.resolveOSImage()
+	err = driver.resolveImage()
 	if err != nil {
 		return err
 	}
 
+	log.Infof("Resolved %s image '%s' ('%s') in data centre '%s'.",
+		compute.ImageTypeName(driver.ImageType),
+		driver.ImageName,
+		driver.ImageID,
+		driver.DataCenterID,
+	)
+
 	switch driver.ImageOSType {
 	case "REDHAT664":
 	case "REDHAT764":
-		return fmt.Errorf("Image '%s' is not currently supported because the CloudControl images based on RedHat 6 and 7 are known to have problems with Docker Machine.",
-			driver.ImageName,
-		)
+		if driver.ImageType == compute.ImageTypeOS {
+			log.Warnf("Image '%s' may cause problems; the current CloudControl OS images based on RedHat 6 and 7 are known to have problems with Docker Machine (due to initial firewall configuration). If you want to use v6 / v7 of RedHat or Centos, you may want to create a custom image based on the destired OS image and ensure its firewall configuration is valid.",
+				driver.ImageName,
+			)
+		}
 	}
 
 	return nil
