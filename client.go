@@ -344,7 +344,7 @@ func (driver *Driver) startServer() error {
 		return err
 	}
 	if server == nil {
-		return fmt.Errorf("Server '%s' not found.", driver.ServerID)
+		return fmt.Errorf("server '%s' not found", driver.ServerID)
 	}
 
 	if !server.Started {
@@ -373,7 +373,7 @@ func (driver *Driver) stopServer() error {
 		return err
 	}
 	if server == nil {
-		return fmt.Errorf("Server '%s' not found.", driver.ServerID)
+		return fmt.Errorf("server '%s' not found", driver.ServerID)
 	}
 
 	if !server.Started {
@@ -402,7 +402,7 @@ func (driver *Driver) powerOffServer() error {
 		return err
 	}
 	if server == nil {
-		return fmt.Errorf("Server '%s' not found.", driver.ServerID)
+		return fmt.Errorf("server '%s' not found", driver.ServerID)
 	}
 
 	if !server.Started {
@@ -531,7 +531,7 @@ func (driver *Driver) deleteNATRuleForServer() error {
 // Find the existing NAT rule (if any) that forwards IPv4 traffic to specified internal address.
 func (driver *Driver) getExistingNATRuleByInternalIP(internalIPAddress string) (*compute.NATRule, error) {
 	if driver.NetworkDomainID == "" {
-		return nil, errors.New("Network domain has not been resolved.")
+		return nil, errors.New("network domain has not been resolved")
 	}
 
 	client, err := driver.getCloudControlClient()
@@ -565,7 +565,7 @@ func (driver *Driver) getExistingNATRuleByInternalIP(internalIPAddress string) (
 // Ensure that at least one public IP address is available in the target network domain.
 func (driver *Driver) ensurePublicIPAvailable() error {
 	if driver.NetworkDomainID == "" {
-		return errors.New("Network domain has not been resolved.")
+		return errors.New("network domain has not been resolved")
 	}
 
 	log.Debugf("Verifying that network domain '%s' has a public IP available for server '%s'...", driver.NetworkDomainName, driver.MachineName)
