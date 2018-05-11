@@ -21,6 +21,9 @@ docker-machine create --driver ddcloud \
 	--ddcloud-networkdomain 'my-docker-domain' \
 	--ddcloud-vlan 'my-docker-vlan' \
 	--ddcloud-ssh-key ~/.ssh/id_rsa \
+	--ddcloud-memorygb 8 \
+	--ddcloud-cpucount 4 \
+	--ddcloud-corespersocket 4 \
 	--ddcloud-ssh-bootstrap-password 'throw-away-password' \
 	mydockermachine
 ```
