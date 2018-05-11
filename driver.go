@@ -102,6 +102,13 @@ type Driver struct {
 	// The client's public (external) IP address.
 	ClientPublicIPAddress string
 
+	// The amount of RAM in GB for the target machine
+	MemoryGB int
+	// The amount of CPUs for the target machine
+	CPUCount int
+	// The amount of cores per socket for the target machine.
+	CoresPerSocket int
+
 	// The CloudControl API client.
 	client *compute.Client
 }
@@ -201,6 +208,21 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:  "ddcloud-use-private-ip",
 			Usage: "Don't create NAT and firewall rules for target server (you will need to be connected to the VPN for your target data centre). Default: false",
 		},
+		mcnflag.IntFlag{
+			Name:   "ddcloud-memorygb",
+			Usage:  "The amount of RAM in GB for the target machine. Default: 4",
+			Value:  4,
+		},
+		mcnflag.IntFlag{
+			Name:   "ddcloud-cpucount",
+			Usage:  "The amount of CPUs for the target machine. Default: 2",
+			Value:  2,
+		},
+		mcnflag.IntFlag{
+			Name:   "ddcloud-corespersocket",
+			Usage:  "The amount of cores per socket for the target machine. Default: 2",
+			Value:  2,
+		},
 	}
 }
 
@@ -233,6 +255,10 @@ func (driver *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	driver.CreateDockerFirewallRule = flags.Bool("ddcloud-create-ssh-firewall-rule")
 	driver.ClientPublicIPAddress = flags.String("ddcloud-client-public-ip")
 	driver.UsePrivateIP = flags.Bool("ddcloud-use-private-ip")
+
+	driver.MemoryGB = flags.Int("ddcloud-memorygb")
+	driver.CPUCount = flags.Int("ddcloud-cpucount")
+	driver.CoresPerSocket = flags.Int("ddcloud-corespersocket")
 
 	log.Debugf("docker-machine-driver-ddcloud %s", DriverVersion)
 

@@ -248,10 +248,6 @@ func (driver *Driver) resolveImage() error {
 		)
 	}
 
-	driver.ImageID = image.GetID()
-	driver.ImageType = image.GetType()
-	driver.ImageOSType = image.GetOS().ID
-
 	return nil
 }
 
@@ -332,6 +328,12 @@ func (driver *Driver) buildDeploymentConfiguration() (deploymentConfiguration co
 
 		Start: true,
 	}
+
+	// Customise memory and / or CPU (if required).
+	deploymentConfiguration.MemoryGB = driver.MemoryGB
+	deploymentConfiguration.CPU.Count = driver.CPUCount
+	deploymentConfiguration.CPU.CoresPerSocket = driver.CoresPerSocket
+
 	image.ApplyTo(&deploymentConfiguration)
 
 	return
