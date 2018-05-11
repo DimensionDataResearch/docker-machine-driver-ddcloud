@@ -248,6 +248,10 @@ func (driver *Driver) resolveImage() error {
 		)
 	}
 
+	driver.ImageID = image.GetID()
+	driver.ImageType = image.GetType()
+	driver.ImageOSType = image.GetOS().ID
+
 	return nil
 }
 
