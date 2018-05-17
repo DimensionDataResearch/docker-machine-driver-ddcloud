@@ -1,5 +1,13 @@
 # Changes
 
+## v0.9.6
+
+* Restore ability to use image defaults for CPU / RAM configuration (DimensionDataResearch/docker-machine-driver-ddcloud#14).
+
+## v0.9.5
+
+* Ability to customise target machine's CPU / RAM configuration (DimensionDataResearch/docker-machine-driver-ddcloud#13).
+
 ## v0.9.4
 
 Enhancements:

@@ -209,19 +209,19 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage: "Don't create NAT and firewall rules for target server (you will need to be connected to the VPN for your target data centre). Default: false",
 		},
 		mcnflag.IntFlag{
-			Name:   "ddcloud-memorygb",
-			Usage:  "The amount of RAM in GB for the target machine. Default: 4",
-			Value:  4,
+			Name:  "ddcloud-memorygb",
+			Usage: "The amount of RAM in GB for the target machine. Default: 4",
+			Value: 4,
 		},
 		mcnflag.IntFlag{
-			Name:   "ddcloud-cpucount",
-			Usage:  "The amount of CPUs for the target machine. Default: 2",
-			Value:  2,
+			Name:  "ddcloud-cpucount",
+			Usage: "The amount of CPUs for the target machine. Default: 2",
+			Value: 2,
 		},
 		mcnflag.IntFlag{
-			Name:   "ddcloud-corespersocket",
-			Usage:  "The amount of cores per socket for the target machine. Default: 2",
-			Value:  2,
+			Name:  "ddcloud-corespersocket",
+			Usage: "The amount of cores per socket for the target machine. Default: 2",
+			Value: 2,
 		},
 	}
 }
