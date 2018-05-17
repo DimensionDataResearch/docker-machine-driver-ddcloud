@@ -21,6 +21,9 @@ docker-machine create --driver ddcloud \
 	--ddcloud-networkdomain 'my-docker-domain' \
 	--ddcloud-vlan 'my-docker-vlan' \
 	--ddcloud-ssh-key ~/.ssh/id_rsa \
+	--ddcloud-memorygb 8 \
+	--ddcloud-cpucount 4 \
+	--ddcloud-corespersocket 4 \
 	--ddcloud-ssh-bootstrap-password 'throw-away-password' \
 	mydockermachine
 ```
@@ -40,6 +43,9 @@ Environment: `MCP_REGION`.
 * `ddcloud-networkdomain` - The name of the target CloudControl network domain.
 * `ddcloud-datacenter` - The name of the CloudControl datacenter (e.g. NA1, AU9) in which the network domain is located.
 * `ddcloud-vlan` - The name of the target CloudControl VLAN.
+* `ddcloud-memorygb` - The amount of RAM in GB for the target machine. (Default 4GB)
+* `ddcloud-cpucount` - The amount of CPUs for the target machine. (Default: 2)
+* `ddcloud-corespersocket` - The amount of cores per socket for the target machine. (Default: 2)
 * `ddcloud-image-name` - The name of the image used to create the target machine.
 Additionally, the OS must be a Linux distribution supported by docker-machine (Ubuntu 12.04 and above are supported, but RedHat 6 and 7 are not supported due to iptables configuration issues).
 * `ddcloud-ssh-user` - The SSH username to use.

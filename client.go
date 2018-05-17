@@ -332,7 +332,13 @@ func (driver *Driver) buildDeploymentConfiguration() (deploymentConfiguration co
 
 		Start: true,
 	}
+
 	image.ApplyTo(&deploymentConfiguration)
+
+	// Customise memory and / or CPU (if required).
+	deploymentConfiguration.MemoryGB = driver.MemoryGB
+	deploymentConfiguration.CPU.Count = driver.CPUCount
+	deploymentConfiguration.CPU.CoresPerSocket = driver.CoresPerSocket
 
 	return
 }
