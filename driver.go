@@ -210,18 +210,18 @@ func (driver *Driver) GetCreateFlags() []mcnflag.Flag {
 		},
 		mcnflag.IntFlag{
 			Name:   "ddcloud-memorygb",
-			Usage:  "The amount of RAM in GB for the target machine. Default: 4",
-			Value:  4,
+			Usage:  "The amount of RAM in GB for the target machine. Default: -1 (Image default)",
+			Value:  -1,
 		},
 		mcnflag.IntFlag{
 			Name:   "ddcloud-cpucount",
-			Usage:  "The amount of CPUs for the target machine. Default: 2",
-			Value:  2,
+			Usage:  "The amount of CPUs for the target machine. Default: -1 (Image default)",
+			Value:  -1,
 		},
 		mcnflag.IntFlag{
 			Name:   "ddcloud-corespersocket",
-			Usage:  "The amount of cores per socket for the target machine. Default: 2",
-			Value:  2,
+			Usage:  "The amount of cores per socket for the target machine. Default: -1 (Image default)",
+			Value:  -1,
 		},
 	}
 }
